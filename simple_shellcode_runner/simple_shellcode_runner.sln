@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.30804.86
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Simple Shellcode Runner", "Simple Shellcode Runner.csproj", "{1659E645-27B0-4AB9-A10E-64BA4B801CB0}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "simple_shellcode_runner", "simple_shellcode_runner.csproj", "{1659E645-27B0-4AB9-A10E-64BA4B801CB0}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

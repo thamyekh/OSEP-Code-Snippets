@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.30804.86
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Shellcode Process Hollowing", "Shellcode Process Hollowing.csproj", "{D8B2F4F4-2B59-4457-B710-F15844570997}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "shellcode_process_hollowing", "shellcode_process_hollowing.csproj", "{D8B2F4F4-2B59-4457-B710-F15844570997}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
