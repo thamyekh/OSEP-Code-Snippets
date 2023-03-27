@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.30804.86
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "XOR Shellcode Encoder", "XOR Shellcode Encoder.csproj", "{EE64B207-D973-489B-84A8-B718B93E039B}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "XOR_shellcode_encoder", "XOR_shellcode_encoder.csproj", "{EE64B207-D973-489B-84A8-B718B93E039B}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
