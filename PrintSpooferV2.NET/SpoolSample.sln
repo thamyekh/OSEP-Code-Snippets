@@ -1,0 +1,17 @@
+
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 15
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SpoolSample", "SpoolSample.csproj", "{640C36B4-F417-4D85-B031-83A9D23C140B}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x64 = Debug|x64
+		Release|x64 = Release|x64
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{640C36B4-F417-4D85-B031-83A9D23C140B}.Debug|x64.ActiveCfg = Debug|x64
+		{640C36B4-F417-4D85-B031-83A9D23C140B}.Debug|x64.Build.0 = Debug|x64
+		{640C36B4-F417-4D85-B031-83A9D23C140B}.Release|x64.ActiveCfg = Release|x64
+		{640C36B4-F417-4D85-B031-83A9D23C140B}.Release|x64.Build.0 = Release|x64
+	EndGlobalSection
+EndGlobal

