@@ -1,0 +1,10 @@
+---
+- name: Backup TPS reports
+  hosts: linuxvictim
+  gather_facts: true
+  become: yes
+  tasks:
+    - name: Run command
+      shell: mysql --user=root --password=hotdog123 --host=databaseserver --databases tpsreports --result-file=/root/reportsbackup
+      async: 10 
+      poll: 0

