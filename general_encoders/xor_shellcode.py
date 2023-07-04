@@ -9,8 +9,8 @@ import sys
     ./xor_shellcode.py 0xfc,0x48,...,0xff,0xd5
 '''
 
-buf = sys.argv[1].split(',') or None
-key = b'\xfa'
+buf = sys.argv[1].replace('\n', '').split(',') or None
+key = b'\x69'
 
 # int to hexstring; prefix 0x; pad 4 chars
 buf = [f'{int(x, 0) ^ ord(key):#04x}' for x in buf]
