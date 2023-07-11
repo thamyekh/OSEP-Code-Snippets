@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.30804.86
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Shellcode Process Injector", "Shellcode Process Injector.csproj", "{E08BAA9C-9D20-4C9A-8933-EC567F39F54C}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "shellcode_process_injector", "shellcode_process_injector.csproj", "{E08BAA9C-9D20-4C9A-8933-EC567F39F54C}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

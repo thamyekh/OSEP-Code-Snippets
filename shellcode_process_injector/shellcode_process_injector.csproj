@@ -52,6 +52,7 @@
     <LangVersion>7.3</LangVersion>
     <ErrorReport>prompt</ErrorReport>
     <Prefer32Bit>true</Prefer32Bit>
+    <AssemblyName>shellcode_process_injector</AssemblyName>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />
