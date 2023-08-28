@@ -2,8 +2,6 @@
 
 # todo
 - tidy up OSEP code snippets
-- finish proxy awareness
-- go over printspoofer and spoolsample again
 - asciinema prep
 - sectioned shellcode runner
 - html smuggling
@@ -762,7 +760,6 @@ LAPSComputers
 ```
 
 ## access tokens (printspoofer)
-
 executing as service account (or an account that hasn't logged in interactively)
 ```
 # start 2 multi/handler, one with exploit -j because you will be catching two shells (low priv and sys priv)
